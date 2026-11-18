@@ -1,0 +1,1614 @@
+{
+ "schema_version": "1.0",
+ "tools": [
+  {
+   "name": "get_stock_history",
+   "description": "Daily OHLCV (split-corrected, raw + adj_close) for one stock, last max_rows rows plus window summary and data-quality metadata.",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker from the 30-stock universe, e.g. THYAO",
+      "type": "string"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "First date (YYYY-MM-DD). Default: 60 trading days before end."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Last date. Default and maximum: as_of."
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is returned. Default: last trading day."
+     },
+     "max_rows": {
+      "default": 30,
+      "description": "Most recent rows to return (summary covers the whole window).",
+      "maximum": 120,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "ticker"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "get_index_history",
+   "description": "Daily OHLCV of the BIST 100 benchmark (XU100), last max_rows rows plus window summary.",
+   "input_schema": {
+    "properties": {
+     "index": {
+      "default": "XU100",
+      "description": "Benchmark index. Only XU100 (BIST 100) is available.",
+      "type": "string"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "First date (YYYY-MM-DD). Default: 60 trading days before end."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Last date. Default and maximum: as_of."
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is returned."
+     },
+     "max_rows": {
+      "default": 30,
+      "description": "Most recent rows to return.",
+      "maximum": 120,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "name": "calculate_indicators",
+   "description": "SMA/EMA/RSI/MACD/Bollinger/ATR/KAMA/Supertrend/Ichimoku values and categorical states for one stock at as_of (dividend-adjusted prices).",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker from the 30-stock universe, e.g. THYAO",
+      "type": "string"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date (YYYY-MM-DD). Default: last available trading day. Nothing after it is used."
+     },
+     "config": {
+      "anyOf": [
+       {
+        "properties": {
+         "sma_windows": {
+          "default": [
+           20,
+           50,
+           200
+          ],
+          "items": {
+           "type": "integer"
+          },
+          "type": "array"
+         },
+         "ema_windows": {
+          "default": [
+           12,
+           26
+          ],
+          "items": {
+           "type": "integer"
+          },
+          "type": "array"
+         },
+         "rsi_window": {
+          "default": 14,
+          "type": "integer"
+         },
+         "macd": {
+          "default": [
+           12,
+           26,
+           9
+          ],
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+           {
+            "type": "integer"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "integer"
+           }
+          ],
+          "type": "array"
+         },
+         "bollinger": {
+          "default": [
+           20,
+           2.0
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ],
+          "type": "array"
+         },
+         "atr_window": {
+          "default": 14,
+          "type": "integer"
+         },
+         "kama": {
+          "default": [
+           10,
+           2,
+           30
+          ],
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+           {
+            "type": "integer"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "integer"
+           }
+          ],
+          "type": "array"
+         },
+         "supertrend": {
+          "default": [
+           10,
+           3.0
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+           {
+            "type": "integer"
+           },
+           {
+            "type": "number"
+           }
+          ],
+          "type": "array"
+         },
+         "ichimoku": {
+          "default": [
+           9,
+           26,
+           52
+          ],
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+           {
+            "type": "integer"
+           },
+           {
+            "type": "integer"
+           },
+           {
+            "type": "integer"
+           }
+          ],
+          "type": "array"
+         }
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Optional indicator parameters; defaults are standard."
+     },
+     "tail_rows": {
+      "default": 0,
+      "description": "Also return the last N rows of close/rsi/macd_hist/bb_pct_b/st_dir (0 = snapshot only).",
+      "maximum": 30,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "ticker"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "detect_reversal_events",
+   "description": "Timestamped technical reversal events (RSI/Bollinger/Supertrend/KAMA/MACD/Ichimoku) with 1/3/5/10-day forward return strength vs. history, completed horizons only.",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker, e.g. THYAO",
+      "type": "string"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is used."
+     },
+     "direction": {
+      "default": "bullish",
+      "description": "Which kind of reversal events to detect.",
+      "enum": [
+       "bullish",
+       "bearish",
+       "both"
+      ],
+      "type": "string"
+     },
+     "event_types": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Subset of event types; default all for the direction. Valid: rsi_oversold_exit, bollinger_lower_reclaim, supertrend_flip_up, kama_cross_up, macd_cross_up, ichimoku_tk_cross_up, ichimoku_cloud_breakout_up, rsi_overbought_exit, bollinger_upper_rejection, supertrend_flip_down, kama_cross_down, macd_cross_down, ichimoku_tk_cross_down, ichimoku_cloud_breakdown"
+     },
+     "lookback_days": {
+      "default": 1260,
+      "description": "Trading days of history used for the strength statistics (~5 years default).",
+      "maximum": 3000,
+      "minimum": 60,
+      "type": "integer"
+     },
+     "recent_days": {
+      "default": 10,
+      "description": "Events within this many trading days of as_of are listed as 'recent'.",
+      "maximum": 60,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "cooldown_days": {
+      "default": 5,
+      "description": "Same-type events within this many bars of a previous one are dropped.",
+      "maximum": 30,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "ticker"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "find_support_resistance",
+   "description": "Support/resistance levels from confirmed pivots: price zone, touch count, strength, distance from last close.",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker, e.g. THYAO",
+      "type": "string"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is used."
+     },
+     "lookback_days": {
+      "default": 500,
+      "description": "Trading days of history scanned for pivots.",
+      "maximum": 2000,
+      "minimum": 60,
+      "type": "integer"
+     },
+     "tolerance_pct": {
+      "default": 1.5,
+      "description": "Pivots within this percent of each other form one level.",
+      "exclusiveMinimum": 0,
+      "maximum": 10,
+      "type": "number"
+     },
+     "pivot_window": {
+      "default": 5,
+      "description": "Bars on each side that confirm a pivot.",
+      "maximum": 15,
+      "minimum": 2,
+      "type": "integer"
+     },
+     "max_levels": {
+      "default": 3,
+      "description": "Supports and resistances returned (nearest to price).",
+      "maximum": 8,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "min_touches": {
+      "default": 2,
+      "description": "Minimum pivots for a level.",
+      "maximum": 10,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "ticker"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "rank_sector_relative_strength",
+   "description": "Peer-group relative strength: each member's horizon return vs. the sector median and XU100, lag score and rank (1 = most lagging).",
+   "input_schema": {
+    "properties": {
+     "sector": {
+      "description": "Peer group name (e.g. Financials, Retail_Consumer, Energy_Utilities, Metals_Mining, Chemicals, Auto_Durables, Construction_Materials, Transport, Telecom, Healthcare, Defense_Tech) or a ticker (its group is used).",
+      "type": "string"
+     },
+     "horizon_days": {
+      "default": 10,
+      "description": "Return horizon in trading days (typically 5, 10 or 20).",
+      "maximum": 60,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is used."
+     }
+    },
+    "required": [
+     "sector"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "test_weekday_pattern",
+   "description": "Tests a calendar/multi-day pattern: occurrences, conditional returns vs baseline, p-value with multiple-testing correction, in-sample vs out-of-sample, per-year stability and whether the effect is just market-wide (XU100 reference).",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker, e.g. THYAO",
+      "type": "string"
+     },
+     "pattern": {
+      "description": "weekday_return: return on `weekday` vs other days. bounce_after_down_day: next-day return after a down `weekday`. bounce_after_n_down_days: next-day return after n consecutive down closes.",
+      "enum": [
+       "weekday_return",
+       "bounce_after_down_day",
+       "bounce_after_n_down_days"
+      ],
+      "type": "string"
+     },
+     "weekday": {
+      "anyOf": [
+       {
+        "enum": [
+         "MON",
+         "TUE",
+         "WED",
+         "THU",
+         "FRI"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Required for weekday_return and bounce_after_down_day."
+     },
+     "n_days": {
+      "default": 3,
+      "description": "Consecutive down closes for bounce_after_n_down_days.",
+      "maximum": 6,
+      "minimum": 2,
+      "type": "integer"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Period start (default: 5 years before as_of)."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Period end (default and maximum: as_of)."
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is used."
+     },
+     "n_tests_in_family": {
+      "default": 5,
+      "description": "How many similar patterns were tried (Bonferroni correction). 5 = all weekdays.",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "ticker",
+     "pattern"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "get_fundamental_metrics",
+   "description": "Point-in-time financial metrics of one stock (growth, profitability, leverage, liquidity, cash conversion; banks/insurer have their own set) with publication timestamps, data-era flag and valuation multiples.",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker, e.g. THYAO",
+      "type": "string"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date: only quarters already public on that date are used."
+     },
+     "period": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Optional specific quarter 'YYYYQn' (e.g. 2024Q2); it must be public at as_of. Default: latest public quarter."
+     }
+    },
+    "required": [
+     "ticker"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "calculate_fundamental_change",
+   "description": "Change of the latest public quarter vs. the previous quarter and vs. the same quarter a year earlier: ratio deltas always; growth rates only in the nominal (pre-TMS 29) era.",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker, e.g. THYAO",
+      "type": "string"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date: only quarters already public on that date are used."
+     }
+    },
+    "required": [
+     "ticker"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "get_macro_context",
+   "description": "Market-based macro context at as_of (D-1 rule): USD/TRY, EUR/TRY, DXY, VIX, US 10Y, Fed funds and target range, Brent, gold, S&P 500 with changes; reports which macro series are NOT yet available (TCMB policy rate, TUIK CPI).",
+   "input_schema": {
+    "properties": {
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date. Values are taken from the last observation STRICTLY BEFORE this date (global closes happen after the BIST close)."
+     },
+     "lookback_days": {
+      "default": 20,
+      "description": "Window (calendar-day observations, ~trading days) for the change figures.",
+      "maximum": 250,
+      "minimum": 5,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "name": "get_news_events",
+   "description": "Timestamped, legally accessible news/disclosure metadata for a ticker or topic (title, time, source). Returns SOURCE_NOT_AVAILABLE while no dataset is installed.",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "BIST ticker (optional if topic is given)."
+     },
+     "topic": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Topic keyword (optional if ticker is given)."
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "First date; default 30 days before as_of."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Last date; default and maximum: as_of."
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; only items published before it are returned."
+     },
+     "max_items": {
+      "default": 10,
+      "description": "Most recent items to return.",
+      "maximum": 30,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "name": "get_speech_features",
+   "description": "Transcript-derived topics, claims and stance of an approved public video/source, with timestamps. Returns SOURCE_NOT_AVAILABLE while no dataset is installed.",
+   "input_schema": {
+    "properties": {
+     "source_id": {
+      "description": "Id of an approved video/audio source whose transcript features were pre-computed.",
+      "type": "string"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; sources published after it are not returned."
+     }
+    },
+    "required": [
+     "source_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "generate_strategy_variants",
+   "description": "The permitted strategy variants A-E (technical only -> full contextual) as machine-readable specs for run_backtest; E is listed but flagged unavailable.",
+   "input_schema": {
+    "properties": {
+     "hold_days": {
+      "default": 5,
+      "description": "Holding period applied to all variants.",
+      "maximum": 60,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "name": "run_backtest",
+   "description": "Event-based backtest of a strategy variant/spec on the universe: signal shift (entry at next open), costs, trade log, per-period/per-year breakdown, portfolio Sharpe/max drawdown/exposure, XU100 and equal-weight benchmarks, flags for few signals and instability.",
+   "input_schema": {
+    "properties": {
+     "variant": {
+      "anyOf": [
+       {
+        "enum": [
+         "A",
+         "B",
+         "C",
+         "D",
+         "E"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Use a predefined variant (see generate_strategy_variants). Provide either variant or spec."
+     },
+     "spec": {
+      "anyOf": [
+       {
+        "properties": {
+         "name": {
+          "default": "custom",
+          "type": "string"
+         },
+         "trigger_events": {
+          "description": "Bullish events that trigger an entry. Valid: rsi_oversold_exit, bollinger_lower_reclaim, supertrend_flip_up, kama_cross_up, macd_cross_up, ichimoku_tk_cross_up, ichimoku_cloud_breakout_up",
+          "items": {
+           "type": "string"
+          },
+          "type": "array"
+         },
+         "sector": {
+          "anyOf": [
+           {
+            "properties": {
+             "horizon_days": {
+              "default": 10,
+              "maximum": 60,
+              "minimum": 1,
+              "type": "integer"
+             },
+             "min_lag_score": {
+              "default": 0.5,
+              "description": "Stock must lag the peer-group median by at least this many peer standard deviations.",
+              "type": "number"
+             },
+             "require_strong_sector": {
+              "default": true,
+              "description": "Peer-group median return must beat XU100 and be positive.",
+              "type": "boolean"
+             }
+            },
+            "type": "object"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null
+         },
+         "fundamental": {
+          "anyOf": [
+           {
+            "properties": {
+             "min_roe_ttm": {
+              "anyOf": [
+               {
+                "type": "number"
+               },
+               {
+                "type": "null"
+               }
+              ],
+              "default": 0.0,
+              "description": "Minimum trailing ROE (all kinds)."
+             },
+             "max_net_debt_ebitda": {
+              "anyOf": [
+               {
+                "type": "number"
+               },
+               {
+                "type": "null"
+               }
+              ],
+              "default": 4.0,
+              "description": "Maximum net debt / EBITDA (industrial only; null values pass)."
+             },
+             "require_roe_not_declining": {
+              "default": false,
+              "description": "ROE must not be lower than in the previous public quarter.",
+              "type": "boolean"
+             }
+            },
+            "type": "object"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null
+         },
+         "macro": {
+          "anyOf": [
+           {
+            "properties": {
+             "max_vix": {
+              "anyOf": [
+               {
+                "type": "number"
+               },
+               {
+                "type": "null"
+               }
+              ],
+              "default": 30.0,
+              "description": "Block entries when the previous-day VIX is above this."
+             },
+             "max_usdtry_20d_change": {
+              "anyOf": [
+               {
+                "type": "number"
+               },
+               {
+                "type": "null"
+               }
+              ],
+              "default": 0.15,
+              "description": "Block entries when USD/TRY rose more than this over 20 days (hard-risk regime)."
+             }
+            },
+            "type": "object"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null
+         },
+         "hold_days": {
+          "default": 5,
+          "description": "Trading days held after the t+1 open entry.",
+          "maximum": 60,
+          "minimum": 1,
+          "type": "integer"
+         }
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Custom strategy spec; provide either variant or spec."
+     },
+     "hold_days": {
+      "default": 5,
+      "description": "Holding days when `variant` is used.",
+      "maximum": 60,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "tickers": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Universe subset; default all 30 stocks."
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "First signal date. Default 2017-01-01."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Last date (exit must happen on or before it). Default and maximum: as_of."
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is used."
+     },
+     "cost_bps_per_side": {
+      "default": 10.0,
+      "description": "Commission/tax cost per side in basis points.",
+      "maximum": 200,
+      "minimum": 0,
+      "type": "number"
+     },
+     "slippage_bps_per_side": {
+      "default": 5.0,
+      "description": "Slippage per side in basis points.",
+      "maximum": 200,
+      "minimum": 0,
+      "type": "number"
+     },
+     "max_concurrent": {
+      "default": 5,
+      "description": "Portfolio slots (each 1/max_concurrent of capital).",
+      "maximum": 30,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   }
+  },
+  {
+   "name": "check_data_quality",
+   "description": "Data-quality gate for an analysis: stale/missing data, unexplained extreme moves, zero-volume days, late/restated fundamentals, small peer groups, incomplete macro, look-ahead leakage. Returns a verdict PASS|PASS_WITH_WARNINGS|INVESTIGATE|ANALYSIS_UNSAFE|HARD_BLOCK.",
+   "input_schema": {
+    "properties": {
+     "tickers": {
+      "description": "Tickers involved in the analysis",
+      "items": {
+       "type": "string"
+      },
+      "maxItems": 30,
+      "minItems": 1,
+      "type": "array"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date"
+     },
+     "analysis_type": {
+      "default": "general",
+      "description": "Decides which checks are mandatory (peer group for sector_catchup, fundamentals for fundamental_reaction).",
+      "enum": [
+       "sector_catchup",
+       "technical_reversal",
+       "fundamental_reaction",
+       "calendar_pattern",
+       "general"
+      ],
+      "type": "string"
+     },
+     "uses_volume": {
+      "default": false,
+      "description": "True if the analysis relies on volume (zero-volume days then matter more).",
+      "type": "boolean"
+     },
+     "evidence_dates": {
+      "description": "Dates of the evidence actually used; any date after as_of is a leakage flag.",
+      "items": {
+       "properties": {
+        "source": {
+         "description": "Name of the data/evidence item, e.g. 'fundamentals THYAO 2024Q2'",
+         "type": "string"
+        },
+        "date": {
+         "description": "Date this evidence became public / was observed",
+         "format": "date",
+         "type": "string"
+        }
+       },
+       "required": [
+        "source",
+        "date"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "tickers"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "build_evidence_bundle",
+   "description": "Builds the observed evidence set (all deterministic facts with numbers) and the committed evidence set (stock-specific, sufficiently sampled, stable, gate-approved) from the tool results recorded for an analysis.",
+   "input_schema": {
+    "properties": {
+     "analysis_id": {
+      "description": "Id of the running analysis whose recorded tool results are turned into evidence.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "analysis_id"
+    ],
+    "type": "object"
+   }
+  }
+ ],
+ "compact_tools": [
+  {
+   "name": "get_stock_history",
+   "description": "Daily OHLCV (split-corrected, raw + adj_close) for one stock, last max_rows rows plus window summary and data-quality metadata",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "max_rows": {
+     "type": "integer",
+     "required": false,
+     "default": 30
+    }
+   }
+  },
+  {
+   "name": "get_index_history",
+   "description": "Daily OHLCV of the BIST 100 benchmark (XU100), last max_rows rows plus window summary",
+   "params": {
+    "index": {
+     "type": "string",
+     "required": false,
+     "default": "XU100"
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "max_rows": {
+     "type": "integer",
+     "required": false,
+     "default": 30
+    }
+   }
+  },
+  {
+   "name": "calculate_indicators",
+   "description": "SMA/EMA/RSI/MACD/Bollinger/ATR/KAMA/Supertrend/Ichimoku values and categorical states for one stock at as_of (dividend-adjusted prices)",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "config": {
+     "type": "object",
+     "required": false
+    },
+    "tail_rows": {
+     "type": "integer",
+     "required": false,
+     "default": 0
+    }
+   }
+  },
+  {
+   "name": "detect_reversal_events",
+   "description": "Timestamped technical reversal events (RSI/Bollinger/Supertrend/KAMA/MACD/Ichimoku) with 1/3/5/10-day forward return strength vs",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "direction": {
+     "type": "bullish|bearish|both",
+     "required": false,
+     "default": "bullish"
+    },
+    "event_types": {
+     "type": "list[string]",
+     "required": false
+    },
+    "lookback_days": {
+     "type": "integer",
+     "required": false,
+     "default": 1260
+    },
+    "recent_days": {
+     "type": "integer",
+     "required": false,
+     "default": 10
+    },
+    "cooldown_days": {
+     "type": "integer",
+     "required": false,
+     "default": 5
+    }
+   }
+  },
+  {
+   "name": "find_support_resistance",
+   "description": "Support/resistance levels from confirmed pivots: price zone, touch count, strength, distance from last close",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "lookback_days": {
+     "type": "integer",
+     "required": false,
+     "default": 500
+    },
+    "tolerance_pct": {
+     "type": "number",
+     "required": false,
+     "default": 1.5
+    },
+    "pivot_window": {
+     "type": "integer",
+     "required": false,
+     "default": 5
+    },
+    "max_levels": {
+     "type": "integer",
+     "required": false,
+     "default": 3
+    },
+    "min_touches": {
+     "type": "integer",
+     "required": false,
+     "default": 2
+    }
+   }
+  },
+  {
+   "name": "rank_sector_relative_strength",
+   "description": "Peer-group relative strength: each member's horizon return vs",
+   "params": {
+    "sector": {
+     "type": "string",
+     "required": true
+    },
+    "horizon_days": {
+     "type": "integer",
+     "required": false,
+     "default": 10
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    }
+   }
+  },
+  {
+   "name": "test_weekday_pattern",
+   "description": "Tests a calendar/multi-day pattern: occurrences, conditional returns vs baseline, p-value with multiple-testing correction, in-sample vs out-of-sample, per-year stability and whether the effect is just market-wide (XU100 reference)",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "pattern": {
+     "type": "weekday_return|bounce_after_down_day|bounce_after_n_down_days",
+     "required": true
+    },
+    "weekday": {
+     "type": "MON|TUE|WED|THU|FRI",
+     "required": false
+    },
+    "n_days": {
+     "type": "integer",
+     "required": false,
+     "default": 3
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "n_tests_in_family": {
+     "type": "integer",
+     "required": false,
+     "default": 5
+    }
+   }
+  },
+  {
+   "name": "get_fundamental_metrics",
+   "description": "Point-in-time financial metrics of one stock (growth, profitability, leverage, liquidity, cash conversion; banks/insurer have their own set) with publication timestamps, data-era flag and valuation multiples",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "period": {
+     "type": "string",
+     "required": false
+    }
+   }
+  },
+  {
+   "name": "calculate_fundamental_change",
+   "description": "Change of the latest public quarter vs",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    }
+   }
+  },
+  {
+   "name": "get_macro_context",
+   "description": "Market-based macro context at as_of (D-1 rule): USD/TRY, EUR/TRY, DXY, VIX, US 10Y, Fed funds and target range, Brent, gold, S&P 500 with changes; reports which macro series are NOT yet available (TCMB policy rate, TUIK CPI)",
+   "params": {
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "lookback_days": {
+     "type": "integer",
+     "required": false,
+     "default": 20
+    }
+   }
+  },
+  {
+   "name": "get_news_events",
+   "description": "Timestamped, legally accessible news/disclosure metadata for a ticker or topic (title, time, source)",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": false
+    },
+    "topic": {
+     "type": "string",
+     "required": false
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "max_items": {
+     "type": "integer",
+     "required": false,
+     "default": 10
+    }
+   }
+  },
+  {
+   "name": "get_speech_features",
+   "description": "Transcript-derived topics, claims and stance of an approved public video/source, with timestamps",
+   "params": {
+    "source_id": {
+     "type": "string",
+     "required": true
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    }
+   }
+  },
+  {
+   "name": "generate_strategy_variants",
+   "description": "The permitted strategy variants A-E (technical only -> full contextual) as machine-readable specs for run_backtest; E is listed but flagged unavailable",
+   "params": {
+    "hold_days": {
+     "type": "integer",
+     "required": false,
+     "default": 5
+    }
+   }
+  },
+  {
+   "name": "run_backtest",
+   "description": "Event-based backtest of a strategy variant/spec on the universe: signal shift (entry at next open), costs, trade log, per-period/per-year breakdown, portfolio Sharpe/max drawdown/exposure, XU100 and equal-weight benchmarks, flags for few signals and instability",
+   "params": {
+    "variant": {
+     "type": "A|B|C|D|E",
+     "required": false
+    },
+    "spec": {
+     "type": "object",
+     "required": false
+    },
+    "hold_days": {
+     "type": "integer",
+     "required": false,
+     "default": 5
+    },
+    "tickers": {
+     "type": "list[string]",
+     "required": false
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "cost_bps_per_side": {
+     "type": "number",
+     "required": false,
+     "default": 10.0
+    },
+    "slippage_bps_per_side": {
+     "type": "number",
+     "required": false,
+     "default": 5.0
+    },
+    "max_concurrent": {
+     "type": "integer",
+     "required": false,
+     "default": 5
+    }
+   }
+  },
+  {
+   "name": "check_data_quality",
+   "description": "Data-quality gate for an analysis: stale/missing data, unexplained extreme moves, zero-volume days, late/restated fundamentals, small peer groups, incomplete macro, look-ahead leakage",
+   "params": {
+    "tickers": {
+     "type": "list[string]",
+     "required": true
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    },
+    "analysis_type": {
+     "type": "sector_catchup|technical_reversal|fundamental_reaction|calendar_pattern|general",
+     "required": false,
+     "default": "general"
+    },
+    "uses_volume": {
+     "type": "boolean",
+     "required": false,
+     "default": false
+    },
+    "evidence_dates": {
+     "type": "list[object]",
+     "required": false
+    }
+   }
+  },
+  {
+   "name": "build_evidence_bundle",
+   "description": "Builds the observed evidence set (all deterministic facts with numbers) and the committed evidence set (stock-specific, sufficiently sampled, stable, gate-approved) from the tool results recorded for an analysis",
+   "params": {
+    "analysis_id": {
+     "type": "string",
+     "required": true
+    }
+   }
+  }
+ ],
+ "envelope": {
+  "type": "object",
+  "description": "Every tool returns this envelope. status ERROR => data is null and error={code,message}. warnings are machine-readable codes the answer must respect.",
+  "properties": {
+   "tool": {
+    "type": "string"
+   },
+   "schema_version": {
+    "type": "string"
+   },
+   "status": {
+    "enum": [
+     "OK",
+     "WARN",
+     "ERROR"
+    ]
+   },
+   "params": {
+    "type": "object"
+   },
+   "as_of": {
+    "type": [
+     "string",
+     "null"
+    ]
+   },
+   "data": {
+    "type": [
+     "object",
+     "null"
+    ]
+   },
+   "warnings": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "code": {
+       "type": "string"
+      },
+      "message": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "error": {
+    "type": [
+     "object",
+     "null"
+    ],
+    "properties": {
+     "code": {
+      "type": "string"
+     },
+     "message": {
+      "type": "string"
+     }
+    }
+   },
+   "provenance": {
+    "type": [
+     "object",
+     "null"
+    ]
+   }
+  }
+ },
+ "schema_hash": "9f9ab40fd9c845f0"
+}

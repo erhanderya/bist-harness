@@ -1,0 +1,22 @@
+# data / analysis
+pandas
+numpy
+scipy
+statsmodels
+pyarrow
+yfinance
+requests
+# agent / MCP
+mcp
+pydantic
+# fine-tuning (torch installed separately with CUDA wheels)
+transformers
+peft
+trl
+datasets
+accelerate
+bitsandbytes
+sentencepiece
+# dev
+pytest
+tqdm

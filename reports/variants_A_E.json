@@ -1,0 +1,151 @@
+{
+ "rows": [
+  {
+   "variant": "A",
+   "status": "WARN",
+   "signal": {
+    "n_trades": 6058,
+    "mean_net_return": 0.002365,
+    "median_net_return": -0.000843,
+    "win_rate": 0.494388,
+    "mean_excess_vs_xu100": -0.00219,
+    "avg_holding_days": 5
+   },
+   "portfolio": {
+    "total_return": -0.014749,
+    "sharpe_annualized_rf0": 0.123474,
+    "max_drawdown": -0.669768,
+    "exposure_days_pct": 0.995134,
+    "trades_taken": 2217,
+    "trades_rejected_by_slot_limit": 3841,
+    "return_minus_xu100": -14.244478
+   },
+   "test": {
+    "n_trades": 1237,
+    "mean_net_return": 0.002058,
+    "median_net_return": -0.002112,
+    "win_rate": 0.481811,
+    "mean_excess_vs_xu100": -0.002655,
+    "from": "2024-11-25",
+    "to": "2026-11-09"
+   },
+   "flags": [
+    "ZERO_VOLUME_ENTRY_SKIPPED"
+   ]
+  },
+  {
+   "variant": "B",
+   "status": "WARN",
+   "signal": {
+    "n_trades": 604,
+    "mean_net_return": 0.003917,
+    "median_net_return": 0.00046,
+    "win_rate": 0.506623,
+    "mean_excess_vs_xu100": -0.000166,
+    "avg_holding_days": 5
+   },
+   "portfolio": {
+    "total_return": 0.496186,
+    "sharpe_annualized_rf0": 0.464527,
+    "max_drawdown": -0.234054,
+    "exposure_days_pct": 0.6618,
+    "trades_taken": 602,
+    "trades_rejected_by_slot_limit": 2,
+    "return_minus_xu100": -13.733544
+   },
+   "test": {
+    "n_trades": 111,
+    "mean_net_return": -0.003214,
+    "median_net_return": -0.002996,
+    "win_rate": 0.459459,
+    "mean_excess_vs_xu100": -0.000664,
+    "from": "2024-11-25",
+    "to": "2026-11-09"
+   },
+   "flags": [
+    "UNSTABLE_OUT_OF_SAMPLE",
+    "PEER_GROUP_TOO_SMALL",
+    "ZERO_VOLUME_ENTRY_SKIPPED"
+   ]
+  },
+  {
+   "variant": "C",
+   "status": "WARN",
+   "signal": {
+    "n_trades": 472,
+    "mean_net_return": 0.003747,
+    "median_net_return": 0.000879,
+    "win_rate": 0.504237,
+    "mean_excess_vs_xu100": -0.000541,
+    "avg_holding_days": 5
+   },
+   "portfolio": {
+    "total_return": 0.338943,
+    "sharpe_annualized_rf0": 0.388828,
+    "max_drawdown": -0.181951,
+    "exposure_days_pct": 0.581103,
+    "trades_taken": 471,
+    "trades_rejected_by_slot_limit": 1,
+    "return_minus_xu100": -13.890787
+   },
+   "test": {
+    "n_trades": 88,
+    "mean_net_return": -0.001204,
+    "median_net_return": -0.002995,
+    "win_rate": 0.454545,
+    "mean_excess_vs_xu100": 0.00129,
+    "from": "2024-11-25",
+    "to": "2026-11-06"
+   },
+   "flags": [
+    "UNSTABLE_OUT_OF_SAMPLE",
+    "PEER_GROUP_TOO_SMALL",
+    "FUNDAMENTAL_FILTER_RATIOS_ONLY",
+    "ZERO_VOLUME_ENTRY_SKIPPED"
+   ]
+  },
+  {
+   "variant": "D",
+   "status": "WARN",
+   "signal": {
+    "n_trades": 426,
+    "mean_net_return": 0.002005,
+    "median_net_return": -0.001419,
+    "win_rate": 0.495305,
+    "mean_excess_vs_xu100": -0.001669,
+    "avg_holding_days": 5
+   },
+   "portfolio": {
+    "total_return": 0.122589,
+    "sharpe_annualized_rf0": 0.186603,
+    "max_drawdown": -0.202656,
+    "exposure_days_pct": 0.529197,
+    "trades_taken": 425,
+    "trades_rejected_by_slot_limit": 1,
+    "return_minus_xu100": -14.107141
+   },
+   "test": {
+    "n_trades": 86,
+    "mean_net_return": 0.000422,
+    "median_net_return": -0.002618,
+    "win_rate": 0.465116,
+    "mean_excess_vs_xu100": 0.002962,
+    "from": "2024-11-25",
+    "to": "2026-11-06"
+   },
+   "flags": [
+    "PEER_GROUP_TOO_SMALL",
+    "FUNDAMENTAL_FILTER_RATIOS_ONLY",
+    "ZERO_VOLUME_ENTRY_SKIPPED"
+   ]
+  },
+  {
+   "variant": "E",
+   "status": "ERROR",
+   "error": {
+    "code": "LAYER_UNAVAILABLE",
+    "message": "Variant E needs historical timestamped news/speech data, which is not available; it cannot be backtested honestly. Use A-D."
+   }
+  }
+ ]
+}

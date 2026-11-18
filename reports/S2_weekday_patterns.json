@@ -1,0 +1,262 @@
+{
+ "summary": [
+  {
+   "pattern": "bounce_after_down_day",
+   "tests": 150,
+   "significant_and_stable": 11,
+   "market_wide": 1,
+   "stock_specific": 10,
+   "expected_false_positives_at_1pct": 1.5
+  },
+  {
+   "pattern": "bounce_after_n_down_days",
+   "tests": 30,
+   "significant_and_stable": 3,
+   "market_wide": 0,
+   "stock_specific": 3,
+   "expected_false_positives_at_1pct": 0.3
+  },
+  {
+   "pattern": "weekday_return",
+   "tests": 150,
+   "significant_and_stable": 8,
+   "market_wide": 6,
+   "stock_specific": 2,
+   "expected_false_positives_at_1pct": 1.5
+  }
+ ],
+ "by_weekday": [
+  {
+   "weekday": "FRI",
+   "tests": 30,
+   "sig": 2,
+   "market": 0,
+   "mean_diff": 0.0008160999999999999
+  },
+  {
+   "weekday": "MON",
+   "tests": 30,
+   "sig": 0,
+   "market": 0,
+   "mean_diff": 0.0018322666666666667
+  },
+  {
+   "weekday": "THU",
+   "tests": 30,
+   "sig": 3,
+   "market": 30,
+   "mean_diff": 0.0038571
+  },
+  {
+   "weekday": "TUE",
+   "tests": 30,
+   "sig": 0,
+   "market": 29,
+   "mean_diff": -0.0027736333333333333
+  },
+  {
+   "weekday": "WED",
+   "tests": 30,
+   "sig": 3,
+   "market": 30,
+   "mean_diff": -0.0037582
+  }
+ ],
+ "stock_specific": [
+  {
+   "ticker": "TUPRS",
+   "pattern": "bounce_after_down_day",
+   "weekday": "MON",
+   "n": 116,
+   "mean_diff": -0.008887,
+   "p_bonf": 0.002489,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "THYAO",
+   "pattern": "bounce_after_n_down_days",
+   "weekday": NaN,
+   "n": 129,
+   "mean_diff": 0.007304,
+   "p_bonf": 0.015882,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "CCOLA",
+   "pattern": "weekday_return",
+   "weekday": "FRI",
+   "n": 250,
+   "mean_diff": 0.004983,
+   "p_bonf": 0.016101,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "CCOLA",
+   "pattern": "bounce_after_down_day",
+   "weekday": "TUE",
+   "n": 125,
+   "mean_diff": -0.006107,
+   "p_bonf": 0.040605,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "SASA",
+   "pattern": "bounce_after_down_day",
+   "weekday": "TUE",
+   "n": 140,
+   "mean_diff": -0.009746,
+   "p_bonf": 0.005416,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "ENKAI",
+   "pattern": "bounce_after_down_day",
+   "weekday": "THU",
+   "n": 111,
+   "mean_diff": 0.007102,
+   "p_bonf": 0.014937,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "PGSUS",
+   "pattern": "bounce_after_down_day",
+   "weekday": "MON",
+   "n": 117,
+   "mean_diff": -0.006706,
+   "p_bonf": 0.042782,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "PGSUS",
+   "pattern": "bounce_after_down_day",
+   "weekday": "TUE",
+   "n": 145,
+   "mean_diff": -0.00689,
+   "p_bonf": 0.012338,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "PGSUS",
+   "pattern": "bounce_after_n_down_days",
+   "weekday": NaN,
+   "n": 161,
+   "mean_diff": 0.004888,
+   "p_bonf": 0.044953,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "EKGYO",
+   "pattern": "bounce_after_down_day",
+   "weekday": "TUE",
+   "n": 128,
+   "mean_diff": -0.008732,
+   "p_bonf": 0.014311,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "AKSEN",
+   "pattern": "bounce_after_n_down_days",
+   "weekday": NaN,
+   "n": 118,
+   "mean_diff": 0.006013,
+   "p_bonf": 0.034611,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "ECILC",
+   "pattern": "weekday_return",
+   "weekday": "FRI",
+   "n": 250,
+   "mean_diff": 0.005883,
+   "p_bonf": 0.036916,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "ECILC",
+   "pattern": "bounce_after_down_day",
+   "weekday": "TUE",
+   "n": 135,
+   "mean_diff": -0.011032,
+   "p_bonf": 0.000464,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "ECILC",
+   "pattern": "bounce_after_down_day",
+   "weekday": "THU",
+   "n": 96,
+   "mean_diff": 0.008375,
+   "p_bonf": 0.029004,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  },
+  {
+   "ticker": "MAVI",
+   "pattern": "bounce_after_down_day",
+   "weekday": "TUE",
+   "n": 124,
+   "mean_diff": -0.006826,
+   "p_bonf": 0.017456,
+   "oos_same_sign": true,
+   "stable": true,
+   "sig_stable": true,
+   "market_wide": false,
+   "stock_specific": true
+  }
+ ]
+}

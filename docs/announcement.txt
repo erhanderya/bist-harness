@@ -1,0 +1,71 @@
+PROJE DUYURUSU – "KENDİ LLM'İNİZİ GELİŞTİRMEK" NE DEMEK
+PROJE DUYURUSU – "KENDİ LLM'İNİZİ GELİŞTİRMEK" NE DEMEK?
+
+Temel ilke: LLM yorumlar ve açıklar. Python araçları hesaplar. Harness kontrol eder. Backtest doğrular. Model yerel çalışır.
+
+1. Sıfırdan model eğitmeyeceksiniz
+
+Açık kaynak bir LLM seçip projenin finansal görevlerine göre ince ayar (fine-tuning) yapacaksınız. Qwen, Llama, Mistral, Gemma veya Phi gibi modeller kullanılabilir. 1–8 milyar parametrelik küçük modeller önerilir. Bu modeller LoRA/QLoRA gibi yöntemlerle tek bir GPU'da eğitilebilir.
+
+2. LLM sistemin "hesaplayıcısı" değil, "yorumcusudur"
+
+Proje dokümanındaki temel ilke geçerlidir. Modeliniz şunları yapabilmelidir:
+
+- Kullanıcının sorusunu anlamak (ör. "Sektörünün gerisinde kalan bankaları bul").
+
+- Doğru MCP aracını doğru parametrelerle çağırmak (ör. rank_sector_relative_strength, run_backtest).
+
+- Yalnızca araçların döndürdüğü sonuçlara dayanarak açıklama yazmak.
+
+- Yalnızca izin verilen eylem setinden sonuç vermek (WATCH, POTENTIAL_CATCH_UP_CANDIDATE, ANALYSIS_UNSAFE vb.).
+
+- Sayı uydurmamak ve yatırım tavsiyesi vermemek. Kanıt yetersizse INVESTIGATE veya ANALYSIS_UNSAFE demek.
+
+3. İnce ayar verisini siz hazırlayacaksınız
+
+Örnek eğitim kaydı: soru → doğru araç çağrısı → araç çıktısı → kanıta dayalı açıklama.
+
+Kayıtlar dört zorunlu senaryodan üretilmelidir:
+
+- Sektörün gerisinde kalan hisseler (catch-up)
+
+- Haftanın günü ve çok günlü örüntüler
+
+- Teknik dönüşler
+
+- Çeyreklik temel veriler ve fiyat tepkisi
+
+4. Final sistem tamamen yerel çalışmalıdır
+
+Teslim edilen sistemde ChatGPT, Claude, Gemini veya başka bir bulut yapay zekâ API'sine çağrı OLMAYACAKTIR. Model, internet bağlantısı olmadan yerel makinede çalışabilmelidir (Ollama, llama.cpp, vLLM veya Hugging Face Transformers ile).
+
+5. Notlandırma: modeliniz canlı olarak test edilecek
+
+Önceden verilmeyen sorular sorulacaktır. Değerlendirme, dokümanın 30. bölümündeki metriklere göre yapılacaktır:
+
+- Sayısal halüsinasyon oranı
+
+- Hatalı araç çağrısı oranı
+
+- Kanıtsız sonuç oranı
+
+- Kanıt bütünlüğü ve tekrarlanabilirlik
+
+- Kural ihlalleri (ör. yatırım tavsiyesi verme, zorunlu kalite/backtest adımını atlama)
+
+6. Sunum ve rapor
+
+Modelinizi sunum sırasında canlı olarak gösterin ve raporda şunları açıkça belirtin:
+
+- Kullandığınız temel model ve neden onu seçtiğiniz
+
+- İnce ayar verinizi nasıl hazırladığınız ve kaç örnek kullandığınız
+
+- Eğitim yöntemi ve ayarlar (ör. LoRA/QLoRA, hiperparametreler)
+
+- Modeli yerelde nasıl çalıştırdığınız
+
+- Temel model ile ince ayarlı modelin karşılaştırması: fine-tuning neyi iyileştirdi?
+
+- Modelinizin bilinen sınırlamaları
+ 

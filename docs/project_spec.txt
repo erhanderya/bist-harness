@@ -1,0 +1,841 @@
+      CSE-481 ENGINEERING ECONOMICS
+
+ INTEGRATED BIST 100 AGENTIC FINANCIAL ANALYTICS
+                                HARNESS
+
+Technical Analysis · Sector Relative-Value Research · Fundamental Analysis · Macro Data · News &
+                      Speech Intelligence · Backtesting · MCP · Stateful Agent Harness
+
+                             Educational research system for BIST 100 stocks
+
+Python + Yahoo Finance + Fintables + TCMB/TÜK/Federal Reserve + News/Speech Evidence + MCP AI Agents
+
+                                            Dr. Alper Özcan · Akdeniz University
+1. Project Title
+
+Integrated BIST 100 Agentic Financial Analytics Harness: Sector Rotation, Technical Reversals, Fundamental Change,
+Macro Context, News Intelligence and Backtest Verification
+
+2. Project Overview
+
+This project asks students to build an integrated educational financial-analysis system for a selected universe of BIST
+100 stocks. The system does not consist of a single prediction model. Instead, it combines deterministic financial
+tools, multiple evidence sources, historical verification, and a controlled AI-agent workflow.
+Students investigate whether observable market patterns exist before a stock moves, whether lagging stocks within a
+strong sector later catch up, whether weekday return patterns are stable, whether technical reversal events repeat,
+and how quarterly financial changes are reflected in subsequent prices. The project also introduces macroeconomic
+context, curated financial news, and speech-to-text summaries of instructor-approved public finance commentary.
+
+ Core Design Principle
+
+ LLM reasons and explains. Python tools calculate. The harness controls. Backtests verify. Evidence is logged. A human
+ makes the final decision.
+
+The system is strictly for educational and research purposes. It must not connect to a broker, send real orders,
+manage real money, or present personalized investment advice.
+
+3. Learning Objectives
+
+· Build reproducible financial data pipelines for BIST 100 stocks and sector-level comparisons.
+· Distinguish raw market data, deterministic calculations, model interpretation, and AI-generated explanation.
+· Detect sector laggards and test whether relative underperformance is followed by statistically meaningful catch-
+
+     up behavior.
+· Test weekday and multi-day calendar patterns without assuming they are permanent.
+· Measure repeated technical reversal behavior using Bollinger Bands, RSI extrema, Supertrend, KAMA and
+
+     Ichimoku Cloud.
+· Link quarterly financial-statement changes to post-disclosure price behavior using point-in-time data.
+· Integrate USD/TRY, EUR/TRY, CBRT policy rates, Federal Reserve policy rates and TÜK inflation indicators.
+· Integrate news and public expert commentary as timestamped contextual evidence rather than as unverified
+
+     financial facts.
+· Design an MCP-based agent architecture with constrained tools, state, evidence, memory, verification and human
+
+     review.
+· Understand why backtest performance, prediction accuracy and LLM confidence are different concepts.
+
+4. Financial Problem Definition
+
+The system should answer research questions rather than simply output a BUY or SELL label. A useful output is an
+evidence-backed analytical state such as 'sector laggard with improving fundamentals', 'historically repeated lower-
+Bollinger reversal', or 'weekday pattern not statistically stable'.
+The four mandatory research scenarios are:
+· Sector Relative-Value / Catch-Up Scenario
+· Weekday and Multi-Day Pattern Scenario
+· Technical Reversal Event Scenario
+· Quarterly Fundamental Change and Price-Reaction Scenario
+5. Study Universe: 30 BIST 100 Stocks from Multiple Sectors
+
+The following diversified study universe is intended to make sector comparison possible. Sector labels are simplified
+for coursework. Index membership must be re-checked at the start of each run because BIST index constituents
+change over time.
+
+Ticker               Yahoo Symbol              Simplified Sector
+
+ASELS                ASELS.IS                  Technology / Defense
+TUPRS                TUPRS.IS                  Petroleum / Refining
+BIMAS                BIMAS.IS                  Retail Trade
+THYAO                THYAO.IS                  Transportation / Airlines
+AKBNK                AKBNK.IS                  Banking
+KCHOL                KCHOL.IS                  Holding / Investment
+EREGL                EREGL.IS                  Basic Metals / Steel
+TCELL                TCELL.IS                  Telecommunications
+CCOLA                CCOLA.IS                  Food & Beverage
+MGROS                MGROS.IS                  Retail Trade
+SASA                 SASA.IS                   Chemicals / Plastics
+TRALT                TRALT.IS                  Mining
+FROTO                FROTO.IS                  Automotive
+ENKAI                ENKAI.IS                  Construction
+PGSUS                PGSUS.IS                  Transportation / Airlines
+MPARK                MPARK.IS                  Healthcare
+EKGYO                EKGYO.IS                  Real Estate Investment Trust
+GUBRF                GUBRF.IS                  Chemicals / Fertilizer
+TURSG                TURSG.IS                  Insurance
+ENJSA                ENJSA.IS                  Electric Utilities
+TTKOM                TTKOM.IS                  Telecommunications
+OYAKC                OYAKC.IS                  Cement
+AKSEN                AKSEN.IS                  Electric Utilities
+ISMEN                ISMEN.IS                  Brokerage / Capital Markets
+ARCLK                ARCLK.IS                  Durables / Machinery
+ECILC                ECILC.IS                  Healthcare / Pharmaceuticals
+MAVI                 MAVI.IS                   Retail / Apparel
+PETKM                PETKM.IS                  Petrochemicals
+TOASO                TOASO.IS                  Automotive
+KRDMD                KRDMD.IS                  Basic Metals / Steel
+
+Source note: the selection is based on the BIST 100 constituent universe observed in 2026 and intentionally spans
+banking, industry, retail, transportation, telecommunications, energy, chemicals, mining, construction, healthcare,
+insurance, real estate and other sectors.
+
+6. Data Sources
+
+Layer                Example Source                   Use in the System
+
+Market Data          Yahoo Finance / yfinance         OHLCV, adjusted prices, BIST index series, sector/peer price histories
+                                                      Balance sheet, income statement, cash-flow statement, growth, profitability,
+Fundamentals         Fintables                        leverage, liquidity and valuation ratios
+                                                      USD/TRY, EUR/TRY, policy-related series, exchange-rate history and monetary
+Türkiye Macro        TCMB / EVDS                      indicators
+                                                      CPI, monthly/annual inflation, industrial production, unemployment and other
+Inflation / Economy  TÜK                              official statistics
+                                                      Federal funds target range and FOMC policy changes
+Global Rates         Federal Reserve
+                     Bloomberg or legally accessible  Timestamped headlines/articles, company and macro event tags, source metadata
+Financial News       licensed feeds
+                     Instructor-approved public       Speech-to-text, topic extraction, stance/context tags and source timestamps
+Public Expert        YouTube videos
+Commentary
+
+News and video material must be used legally. Students must not bypass paywalls, authentication, licensing
+restrictions, or platform protections. Public video transcripts should be stored only to the extent needed for
+educational analysis, with source URL, speaker/channel, publication time and segment timestamps.
+7. Technical Analysis
+
+The technical layer should calculate, store and analyze at least the following groups:
+
+Group                  Indicators                                  Research Use
+Trend                  SMA, EMA, KAMA                              Direction, slope, crossovers, distance from
+Momentum               RSI, MACD                                   adaptive average
+Volatility             Bollinger Bands, ATR                        Momentum regime, RSI local extrema,
+Trend State            Supertrend                                  divergence candidates
+                                                                   Band touches, bandwidth, volatility regime
+Cloud / Structure      Ichimoku Cloud                              Bullish/bearish state changes and post-flip
+                                                                   returns
+Market Structure       Support/Resistance                          Price above/below cloud, cloud
+Activity               Volume / turnover                           breakout/rejection, Tenkan/Kijun
+                                                                   relationships
+                                                                   Pivot clustering, touches, recency, volume
+                                                                   and reversal strength
+                                                                   Confirmation of breakouts and reversal
+                                                                   events
+
+8. Technical Reversal Event Framework
+
+Students should treat a technical event as a timestamped research event. The system records the event, the market
+state at that time, and the forward return after fixed horizons.
+
+ Example event record
+ Ticker: ASELS
+ Event: Bollinger Lower Band Touch
+ Event Date: t
+ RSI State: Local Low
+ Supertrend State: Bearish
+ KAMA Slope: Flattening
+ Ichimoku State: Below Cloud
+ Volume Regime: High
+ Forward Return Horizons: 1d, 3d, 5d, 10d
+ Reversal Strength: measured after the event
+
+Mandatory event families:
+
+· Lower Bollinger Band touch followed by an upward reversal.
+· Middle Bollinger Band test followed by continuation or rejection.
+· Upper Bollinger Band touch followed by a downward reversal.
+· RSI local trough and local peak events; optionally divergence candidates.
+· Supertrend direction flips and subsequent returns.
+· KAMA slope changes, KAMA-price crosses and adaptive trend persistence.
+· Ichimoku cloud breakout, cloud rejection and return into the cloud.
+· Support/resistance touches with reversal-strength measurement.
+
+9. Fundamental Analysis with Fintables
+
+Fundamental information must be point-in-time. Historical analysis should use the date on which the financial
+statement became publicly available, not only the fiscal quarter-end date. This is essential to prevent future
+information from entering a historical test.
+
+Category               Metrics                                     Question
+
+Growth                 Revenue Growth, EBITDA Growth, Net Profit   Is the company expanding and improving
+                       Growth                                      earnings?
+Profitability
+                       ROE, ROA, EBITDA Margin, Net Profit Margin  How efficiently is capital converted into
+                                                                   profit?
+Leverage   Net Debt/EBITDA, Debt/Equity             Is financial leverage improving or
+Liquidity  Current Ratio, Quick Ratio               deteriorating?
+Valuation  P/E, P/B, EV/EBITDA
+Cash Flow  Operating cash flow and cash conversion  Can short-term obligations be met?
+
+                                                    How is the company priced relative to
+                                                    earnings/equity/operations?
+
+                                                    Do accounting profits convert into cash?
+
+10. Feature Engineering
+
+· Daily and weekly returns, rolling volatility, ATR and volume z-scores.
+· Relative return versus XU100, sector benchmark and peer median.
+· Sector lag score: stock return minus sector-median return over several windows.
+· Distance from Bollinger bands, KAMA, support/resistance and Ichimoku cloud boundaries.
+· Event-count features: how many similar reversals occurred in the historical window.
+· Reversal-strength features over 1, 3, 5 and 10 trading days.
+· Weekday and multi-day sequence labels (e.g., Mon-Tue-Wed down, Thu-Fri up).
+· Quarterly revenue, EBITDA, net profit, margin, ROE and leverage changes.
+· Post-disclosure abnormal return relative to sector and XU100.
+· Macro changes: USD/TRY, EUR/TRY, TCMB rate, Fed rate, monthly/annual CPI.
+· News event tags and speech-intelligence topic/stance tags with timestamps.
+
+11. Mandatory Research Scenario 1 -- Sector Laggard / Catch-Up
+
+Opportunity
+
+Goal: identify stocks that are materially lagging their own sector while the sector is strong, then test whether selected
+laggards historically tend to catch up before an obvious price surge occurs.
+
+ Illustrative Scenario -- Banking Sector
+
+ Assume AKBNK, GARAN, ISCTR and YKBNK form the peer group. Over the latest 20 trading days, the sector median return
+ is +12%. Three banks gained roughly +11% to +16%, while one bank gained only +3%. The lagging bank is not
+ automatically a BUY. The harness asks whether (a) fundamentals are deteriorating, (b) technical trend is stabilizing, (c)
+ relative weakness has historically mean-reverted, and (d) macro conditions explain the lag. If fundamentals are stable and
+ price begins to recover above KAMA / Supertrend while the sector remains strong, the system may label it
+ 'POTENTIAL_CATCH_UP_CANDIDATE' for backtest verification.
+
+Required analysis:
+· Build peer groups by sector.
+· Calculate stock return minus sector median/sector index return over several windows.
+· Rank laggards and leaders inside each sector.
+· Measure whether laggards subsequently outperform peers over 5/10/20 trading days.
+· Separate structural laggards from temporary laggards using fundamental and macro evidence.
+· Backtest the rule across sectors and periods before presenting any conclusion.
+· Report false positives: lagging stocks that continued to underperform.
+
+12. Mandatory Research Scenario 2 -- Weekday and Multi-Day Patterns
+
+Goal: test whether individual stocks or sectors exhibit recurring day-of-week or multi-day sequences, while
+recognizing that apparent patterns may disappear out of sample.
+ Illustrative Scenario -- THYAO
+
+ Suppose historical data suggests a sequence in which Monday, Tuesday and Wednesday are more frequently negative,
+ followed by positive Thursday and Friday returns. Students must not assume this is tradable. They should count
+ occurrences, compare average and median returns, test different market regimes, compare against random or
+ unconditional returns, include transaction costs, and evaluate whether the pattern remains in later unseen periods. A
+ second stock may show the opposite pattern.
+
+Examples of patterns to test:
+· Monday weakness followed by Friday strength.
+· Three consecutive down days followed by a two-day rebound.
+· Post-large-down-day mean reversion.
+· End-of-week continuation versus reversal.
+· Patterns conditional on XU100 direction, sector direction or macro-event weeks.
+Students should explicitly discuss multiple-testing risk. Searching hundreds of combinations can create false patterns
+by chance.
+
+13. Mandatory Research Scenario 3 -- Technical Reversal Patterns
+
+ Illustrative Scenario -- ASELS
+
+ The system finds 24 historical lower-Bollinger touches. In 15 cases, price moved higher within the next five trading days.
+ When the lower-band touch occurred together with an RSI local trough, rising volume and a flattening KAMA, the five-day
+ reversal was historically stronger. However, when price remained below a bearish Supertrend and below the Ichimoku
+ cloud, several signals failed. The harness therefore compares single-indicator events against combined-event conditions.
+
+Students should calculate:
+· Number of lower-band, middle-band and upper-band touches.
+· Bounce/failure count from each band.
+· Average/median reversal strength after each event.
+· RSI trough/peak behavior and optional divergence candidates.
+· Supertrend flip follow-through.
+· KAMA-cross and KAMA-slope behavior.
+· Ichimoku cloud breakout/rejection statistics.
+· Results by market regime: rising XU100, falling XU100, high-volatility and low-volatility periods.
+
+14. Mandatory Research Scenario 4 -- Quarterly Fundamentals and Price
+Reaction
+
+Goal: connect quarterly changes in company financials to price behavior after the information becomes public.
+ Illustrative Scenario -- TUPRS
+
+ Assume a quarter shows improving revenue, EBITDA margin and operating cash flow, while Net Debt/EBITDA declines.
+ The system aligns those values with the public disclosure timestamp. It then measures the stock's 1-day, 5-day and 20-
+ day returns after disclosure, and also calculates abnormal return versus both XU100 and a sector peer basket. The same
+ procedure is repeated across many quarters. The research question is not 'good earnings = price rises'; it is whether
+ specific changes were historically associated with different price reactions.
+The system should support:
+
+· Quarter-over-quarter and year-over-year changes in revenue, EBITDA and net profit.
+· Changes in ROE, margins, liquidity and leverage.
+· Valuation changes before and after the reporting period.
+· Disclosure-date alignment to avoid look-ahead bias.
+· Post-disclosure returns and abnormal returns versus sector/XU100.
+· Comparison of positive fundamental surprises with weak technical states, and vice versa.
+· Sector-specific metrics where appropriate; bank analysis should not blindly use industrial-company ratios.
+
+15. Macro Context Layer  Source            Use
+
+ Variable                TCMB / EVDS       FX-sensitive sectors, exporters, import costs
+                                           and foreign-currency debt
+  USD/TRY and EUR/TRY
+                                           Domestic discount rate, credit conditions and
+TCMB policy conditions   TCMB              sector sensitivity
+
+Federal funds target     Federal Reserve   Global risk appetite, dollar funding and
+                                           international capital conditions
+TÜK CPI                  TÜK
+                                           Inflation regime, real returns and company
+Optional macro series    Official sources  cost/pricing context
+
+                                           Industrial production, unemployment,
+                                           confidence indicators, commodity prices
+
+Macro variables must be aligned by their publication timestamps. Revised or future data should not be retroactively
+inserted into a historical decision unless the project explicitly studies revisions.
+
+16. Financial News and Speech Intelligence Layer
+
+The system may enrich structured data with unstructured context from Bloomberg or other legally accessible high-
+quality financial news feeds and from selected public finance videos.
+
+News pipeline:
+
+· Collect legally accessible headline/article metadata with publication timestamp.
+· Tag company, sector and macro topics.
+· Extract event categories such as earnings, regulation, FX, rates, commodity shock, contract award or geopolitical
+
+     risk.
+· Optionally calculate a simple sentiment/stance label, but preserve the original source and timestamp.
+· Never replace numerical market/fundamental data with a language-model guess.
+
+Speech-to-text pipeline:
+
+· Use instructor-approved public videos from reputable finance educators/practitioners and official financial
+     channels.
+
+· Examples may include public valuation teaching by Aswath Damodaran and public macro/investment
+     commentary from well-known practitioners; the instructor-approved list should be fixed before experiments.
+
+· Convert selected video segments to text, preserving video URL, speaker/channel, publication time and transcript
+     time range.
+
+· Extract topics, claims, stance and uncertainty.
+· Numerical claims in commentary must be checked against deterministic data tools before entering the
+
+     committed evidence set.
+· Expert opinion is contextual evidence, not ground truth.
+17. Trading Strategy and Finite Action Space
+
+The strategy layer combines technical, sector-relative, fundamental, macro and contextual evidence. It must use a
+finite action space.
+
+ Allowed educational actions
+ HOLD
+ WATCH
+ INVESTIGATE
+ POTENTIAL_CATCH_UP_CANDIDATE
+ TECHNICAL_REVERSAL_CANDIDATE
+ FUNDAMENTAL_IMPROVEMENT_CANDIDATE
+ REJECT_SIGNAL
+ ANALYSIS_UNSAFE
+
+Optional BUY/SELL labels may be used only as educational backtest labels. No real broker execution is allowed.
+
+18. Backtesting and Verification Harness
+
+Every strategy or discovered pattern should be historically verified before the system presents a strong conclusion.
+
+· Use signal shifting so decisions at time t cannot use the close or information from t+1.
+· Use financial-statement publication dates, not only quarter-end dates.
+· Compare against Buy-and-Hold, XU100 and where possible a sector benchmark.
+· Report cumulative return, Sharpe ratio, maximum drawdown, win rate and benchmark difference.
+· Include transaction-cost and simple slippage assumptions.
+· Use train/validation/test or rolling walk-forward periods for data-mined rules.
+· Report the number of signals; a high return from very few events should be flagged.
+· Use regime breakdowns and out-of-sample testing for weekday/pattern discoveries.
+
+19. Optional Machine-Learning Prediction
+
+Machine learning is optional and should not replace the main analytical harness. If used, models may predict
+direction, abnormal return class, or probability of a defined event outcome.
+
+ML metrics and finance metrics must be reported separately.
+
+ML Evaluation                                               Financial Evaluation
+Accuracy                                                    Cumulative Return
+Precision                                                   Sharpe Ratio
+Recall                                                      Maximum Drawdown
+F1                                                          Win Rate
+Confusion Matrix                                            Benchmark Difference
+
+Students must explain why Prediction  Profitable Strategy.
+
+20. Agentic AI Architecture
+
+A small set of specialized agents is recommended. Data collection and indicator calculation remain deterministic
+services/workers rather than separate reasoning agents.
+
+Agent                             Responsibility
+Financial Orchestrator Agent      Controls workflow, chooses allowed next state, merges evidence, detects contradictions and
+                                  requests verification.
+Market & Relative-Value Agent     Interprets price/volume, sector lag, weekday patterns, technical indicators and reversal-event
+Fundamental & Macro Agent         statistics.
+News & Speech Intelligence Agent  Interprets Fintables metrics together with FX, domestic rates, Fed policy and inflation context.
+                                  Summarizes timestamped news and public commentary while distinguishing opinion, claim and
+Strategy & Backtest Agent        verified fact.
+Risk & Data Quality Agent        Constructs permitted strategy variants and requests historical verification.
+                                 Checks missing/stale data, period alignment, leakage, look-ahead bias and unsupported
+                                 conclusions.
+
+21. System Architecture
+
+                               
+
+                                Financial Orchestrator Agent 
+
+                               
+
+                                   
+
+
+
+                                                                       
+
+                                                                       
+
+                                                                    
+
+ Market / Sector                  Fundamental / Macro                News / Speech  
+
+ Analysis Agent                   Analysis Agent                     Intelligence Agent 
+
+                                                                    
+
+                                                                       
+
+
+
+                                                                  
+
+                                                
+
+   Evidence Builder                              Risk & Data Quality 
+
+                                                 Gate               
+
+                                                
+
+                               
+
+                                 
+
+                                 
+
+                                  Strategy / Backtest             
+
+                                  Verification Agent              
+
+                                 
+
+                                 
+
+                                 
+
+                                  Human Review + Decision 
+
+                                  Log / Replay                    
+
+                                 
+
+Deterministic MCP Tools below the agents:
+Yahoo OHLCV · Technical Indicators · Sector Ranking · Fintables Metrics
+Macro Series · Event Detection · News Metadata · STT Features · Backtest
+
+22. MCP Tool Architecture
+
+Tool                             Input                              Output
+
+get_stock_history                ticker, start, end                 OHLCV + metadata
+get_index_history                index, start, end                  benchmark time series
+calculate_indicators             ticker/series, config              SMA/EMA/RSI/MACD/Bollinger/ATR/KAMA/Supertrend/Ichimoku
+detect_reversal_events           series, event_config               timestamped technical events
+find_support_resistance          OHLCV, tolerance                   levels, zones, touch count, strength
+rank_sector_relative_strength    sector, horizon                    peer returns, lag score, rank
+test_weekday_pattern             ticker, pattern, period            occurrences, conditional returns, significance diagnostics
+get_fundamental_metrics          ticker, period                     point-in-time financial metrics
+calculate_fundamental_change     ticker, periods                    quarterly/annual changes
+get_macro_context                date_range                         FX, rates, inflation and publication metadata
+get_news_events                  ticker/topic, date_range           timestamped legally accessible event metadata
+get_speech_features              video/source id                    timestamped transcript-derived topics/claims/stance
+run_backtest                     strategy spec, universe, period    performance + trade/event log
+check_data_quality               analysis bundle                    warnings, blocks, stale/leakage flags
+build_evidence_bundle  analysis id  full and committed evidence sets
+
+23. Stateful Agent Harness
+
+ START
+     
+
+ SELECT_UNIVERSE
+     
+
+ LOAD_MARKET_DATA
+     
+
+ CHECK_DATA_QUALITY
+     
+
+ CALCULATE_TECHNICALS
+     
+
+ RUN_SECTOR_RELATIVE_ANALYSIS
+     
+
+ RUN_PATTERN_AND_REVERSAL_ANALYSIS
+     
+
+ LOAD_FUNDAMENTALS
+     
+
+ LOAD_MACRO_CONTEXT
+     
+
+ LOAD_NEWS_AND_SPEECH_CONTEXT
+     
+
+ BUILD_EVIDENCE
+     
+
+ PREVIEW_STRATEGIES
+     
+
+ RUN_BACKTEST
+     
+
+ RISK_GATE
+     
+
+ GENERATE_EXPLANATION
+     
+
+ HUMAN_REVIEW
+     
+
+ LOG_AND_CLOSE
+
+Each state should expose only a defined subset of MCP tools. The LLM must not invent new actions or skip mandatory
+quality/backtest states.
+
+24. Memory Architecture             Example
+                                    Historical prices, indicators, macro series, financial metrics, event
+ Memory Type                        histories.
+ Temporal Memory                    Past analysis cases: state  evidence  action  backtest result 
+                                    human decision.
+ Episodic Memory                    Approved workflow order, tool permissions, validation rules and
+                                    analysis templates.
+ Procedural Memory
+
+A student implementation may use SQLite, PostgreSQL, Parquet/CSV, JSON and Pandas data structures. Enterprise
+infrastructure is not required.
+25. Evidence and Explainability
+
+The system must distinguish between all observed features and the smaller set actually used to justify a conclusion.
+
+ Observed Context
+ - 30+ technical/fundamental/macro/news features
+
+ Committed Evidence Set
+ E1: Stock is 8.5 percentage points behind sector median over 20 days
+ E2: KAMA slope turned positive
+ E3: Lower Bollinger reversal historically succeeded 11/17 comparable events
+ E4: Revenue and EBITDA growth improved in the latest disclosed quarter
+ E5: Net Debt/EBITDA declined
+ E6: Macro regime not flagged as hard-risk
+ E7: Backtest variant B outperformed benchmark after costs
+
+ Educational Analytical State:
+ POTENTIAL_CATCH_UP_CANDIDATE
+
+ Warnings:
+ Historical evidence only; no guarantee of future return.
+
+The AI explanation may cite only evidence that exists in tool outputs.
+
+26. Data Quality and Risk Gate
+
+Hard blocks:
+· Future financial-statement information enters an earlier historical date.
+· Look-ahead bias in indicator/signal construction.
+· Wrong ticker or broken price history.
+· Critical period mismatch between price and financial data.
+· Backtest uses information unavailable at decision time.
+Soft warnings:
+· Macro series unavailable for a limited interval.
+· News coverage is sparse.
+· Video transcript quality is low.
+· Small number of historical technical events.
+· Sector peer group is temporarily too small.
+
+ Possible gate outputs
+ PASS
+ PASS_WITH_WARNINGS
+ INVESTIGATE
+ ANALYSIS_UNSAFE
+ HARD_BLOCK
+
+27. Human-in-the-Loop
+
+A human reviewer evaluates the educational analytical conclusion. The system must never silently convert an AI
+conclusion into a real market order.
+
+ Agent conclusion: POTENTIAL_CATCH_UP_CANDIDATE
+ Human review: REJECT
+ Reason: historical maximum drawdown is too high
+ Recorded for: educational decision-memory and later replay
+28. Decision Log and Replay
+
+· Ticker and sector
+· Analysis timestamp and market-data period
+· Data versions and publication timestamps
+· Tools called and tool outputs
+· Technical / sector / fundamental / macro states
+· News and speech source metadata
+· Full Evidence Bundle and Committed Evidence Set
+· Strategy variant and backtest result
+· Risk/Data Quality gate status
+· Agent conclusion and explanation
+· Human review result and reason
+
+29. Previewable Strategy Space
+
+Before selecting a conclusion, the harness should compare multiple strategy definitions.
+
+Variant                                            Evidence Used
+A -- Technical Only                                Trend, RSI/MACD, Bollinger, support/resistance, volume
+B -- Technical + Sector Relative                   A + peer lag/leader state
+C -- Technical + Sector + Fundamental              B + quarterly financial quality/change
+D -- Full Structured                               C + macro context
+E -- Full Contextual                               D + verified news/speech context
+
+Every variant should be previewed through the same backtesting metrics and data-quality rules.
+
+30. Agent Harness Experiments                      Description
+
+ System Version                                    All data are passed as text; no deterministic tool requirement.
+                                                   MCP tools provide calculations.
+  A -- Raw LLM                                     Tool permissions and ordered states are enforced.
+  B -- LLM + Tools                                 Committed evidence and blocking rules are added.
+  C -- Tools + Stateful Harness                    Replayable memory and human decisions are added.
+  D -- C + Evidence + Quality Gate
+  E -- D + Memory + Human Review
+
+Suggested harness-engineering metrics:
+
+· Numerical hallucination rate
+· Invalid tool-call rate
+· Unsupported conclusion rate
+· Evidence completeness
+· Analysis reproducibility
+· Backtest correctness
+· Number of tool calls
+· Latency / workflow cost
+
+31. Evaluation Metrics                             Metrics
+                                                   Subsequent relative return, hit rate, median catch-up size, false-
+ Research Layer                                    positive rate
+ Sector catch-up research                          Occurrence count, conditional mean/median return, out-of-
+                                                   sample stability, cost-adjusted result
+ Calendar patterns                                 Bounce rate, reversal strength, forward return distribution, regime
+                                                   stability
+ Reversal research
+Fundamental reaction  Post-disclosure abnormal return, horizon response, sector-
+                      adjusted response
+Trading/backtest      Cumulative return, Sharpe, max drawdown, win rate, benchmark
+ML (optional)         difference
+Agent harness         Accuracy, precision, recall, F1, confusion matrix
+                      Hallucination/tool/evidence/reproducibility metrics
+
+32. Suggested Python Functions (Names and Responsibilities)
+
+· load_universe()
+· get_stock_history()
+· get_index_history()
+· build_sector_peer_groups()
+· calculate_indicators()
+· calculate_bollinger_events()
+· calculate_kama_state()
+· calculate_supertrend_state()
+· calculate_ichimoku_state()
+· find_support_resistance()
+· calculate_reversal_strength()
+· rank_sector_laggards()
+· test_weekday_pattern()
+· detect_multiday_patterns()
+· get_fundamental_metrics()
+· calculate_quarterly_changes()
+· align_financial_disclosure_dates()
+· get_macro_context()
+· extract_news_events()
+· transcribe_finance_video_segment()
+· extract_speech_features()
+· build_evidence_bundle()
+· generate_strategy_variants()
+· run_backtest()
+· calculate_performance()
+· check_data_quality()
+· log_decision()
+· replay_analysis()
+
+33. Example End-to-End Harness Scenario
+
+ User Question
+ "Find BIST 100 stocks that are lagging a strong sector but may be entering a historically favorable catch-
+ up state."
+
+ 1. Orchestrator selects the 30-stock universe.
+ 2. Market tool loads OHLCV and XU100.
+ 3. Data Quality Agent validates dates, missing data and adjustments.
+ 4. Sector tool ranks each stock versus its peers.
+ 5. Technical tools detect Bollinger/KAMA/Supertrend/Ichimoku states and reversal history.
+ 6. Fundamental tool loads only financial data that was public by the analysis date.
+ 7. Macro tool loads FX, CBRT/Fed rate context and TÜK inflation.
+ 8. News/Speech tool returns timestamped contextual events and verified claims.
+ 9. Evidence Builder separates observed context from committed evidence.
+ 10. Strategy Agent creates several candidate rule sets.
+ 11. Backtest tool evaluates each rule across earlier periods.
+ 12. Risk Gate rejects leakage, weak samples or unstable results.
+ 13. Orchestrator writes an educational analytical conclusion.
+ 14. Human reviewer accepts, modifies or rejects it.
+ 15. Entire workflow is saved for replay.
+
+34. Methodology
+
+1. Freeze the 30-stock universe and sector map for the experiment period.
+2. Collect and version market, fundamental and macro datasets.
+3. Create point-in-time publication calendars for financial and macro data.
+4. Engineer technical, relative-value, fundamental and contextual features.
+5. Define event-based research questions before looking at outcomes where possible.
+6. Run mandatory sector, calendar, reversal and fundamental-reaction scenarios.
+7. Develop several rule-based strategy variants.
+8. Backtest with proper signal timing, benchmark comparison, costs and out-of-sample checks.
+9. Integrate tools into MCP and implement the stateful harness.
+10. Add evidence bundles, memory, quality gates and human review.
+11. Run harness experiments A­E and compare reproducibility/safety.
+12. Document limitations and cases where the system returns INVESTIGATE or ANALYSIS_UNSAFE.
+
+35. Expected Outcomes
+
+· A reproducible multi-source BIST 100 research dataset.
+· A sector-relative ranking system capable of identifying leaders and laggards.
+· A tested weekday/multi-day pattern analysis module.
+· A technical reversal-event database covering Bollinger, RSI, Supertrend, KAMA, Ichimoku and support/resistance.
+· A point-in-time fundamental analysis layer using quarterly Fintables data.
+· A macro-context layer using FX, domestic policy context, Fed policy and official inflation data.
+· A timestamped news and speech-intelligence context layer.
+· A rule-based strategy and verification framework.
+· An MCP-based stateful AI agent harness with evidence, memory, tool permissions and replay.
+· A clear separation between historical evidence, AI explanation and human judgment.
+
+36. Final Deliverables
+
+· Python source code / notebooks and environment instructions.
+· A fixed BIST 100 study universe and sector map.
+· Data dictionary describing every structured and unstructured feature.
+· Technical reversal-event report.
+· Sector laggard/catch-up research report.
+· Weekday and multi-day pattern research report.
+· Quarterly fundamentals and post-disclosure price-reaction report.
+· Macro and contextual evidence integration report.
+· MCP tool definitions and stateful harness implementation.
+· Decision-log and replay demonstration.
+· Backtesting results and benchmark comparisons.
+· Agent-harness experiment comparison.
+· Final technical report and classroom demonstration.
+37. Project Quality Criteria
+
+· Correct point-in-time data alignment and absence of look-ahead bias.
+· Clear distinction among tools, workers/services and reasoning agents.
+· Reproducible technical and fundamental calculations.
+· Meaningful sector-relative, calendar, reversal and quarterly-event experiments.
+· Backtests that include benchmarks, costs and risk measures.
+· Controlled MCP tool use and explicit harness states.
+· Evidence-backed explanations with committed evidence.
+· Proper risk/data-quality gates and safe failure states.
+· Useful decision logging and replay.
+· Critical interpretation of news and expert commentary rather than blind sentiment following.
+· Clear limitations and educational-use framing.
+
+38. Final Learning Outcomes
+
+At the end of the project, students should understand that a financial AI system is not valuable because it can produce
+a confident sentence. It is valuable when its data are correctly timed, its calculations are reproducible, its actions are
+constrained, its evidence is inspectable, its historical claims are verified, and its conclusions can be challenged by a
+human.
+
+ Key Final Principle
+
+ The purpose of the AI agent is not to invent or predict financial facts. Its role is to orchestrate deterministic analytical
+ tools, manage evidence and state, enforce a controlled analysis workflow, and explain reproducible results.
+
+Students should be able to explain the following distinctions:
+
+· Prediction  profitable strategy
+· Correlation  causation
+· Backtest  future guarantee
+· Historical evidence  investment advice
+· LLM confidence  statistical probability
+· Fundamental strength  guaranteed stock-price increase
+· Expert commentary  verified fact
+
+39. Reference Data Sources and Implementation Notes
+
+· Borsa stanbul -- BIST stock indices and periodic constituent reviews (2026).
+· BIST 100 constituent/sector reference list observed during 2026; membership should be revalidated for each
+
+     analysis date.
+· Fintables -- company financial statements, income statements, cash-flow statements and ratio-analysis pages.
+· Central Bank of the Republic of Türkiye (TCMB) -- official exchange-rate and monetary/statistical data, including
+
+     EVDS-linked series.
+· Turkish Statistical Institute (TÜK) -- official CPI and economic data portal.
+· Federal Reserve Board -- FOMC statements and federal funds target range history.
+· Yahoo Finance / yfinance -- educational retrieval of historical market time series, subject to source availability
+
+     and terms.
+· Bloomberg or other licensed/legally accessible financial news source -- contextual event metadata only within
+
+     permitted access.
+· Public YouTube content from instructor-approved financial educators/practitioners -- selected segments
+
+     processed with source and timestamp metadata.
+Document note: all numerical examples in the four illustrative scenarios are hypothetical examples designed to
+explain the required methodology; they are not current market signals or investment recommendations.
+
