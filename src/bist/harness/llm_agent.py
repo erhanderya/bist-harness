@@ -28,7 +28,7 @@ NEXT_TOOL = {"type": "function", "function": {"name": "next_state", "description
 
 
 class OllamaChat:
-    def __init__(self, model: str = "llama3.2:3b", host: str = "http://localhost:11434", temperature: float = 0.0, num_ctx: int = 8192, timeout: int = 300):
+    def __init__(self, model: str = "qwen3:4b-instruct-2507-q4_K_M", host: str = "http://localhost:11434", temperature: float = 0.0, num_ctx: int = 8192, timeout: int = 300):
         self.model, self.host, self.temperature, self.num_ctx, self.timeout = model, host, temperature, num_ctx, timeout
 
     def __call__(self, messages: list[dict], tools: list[dict] | None = None, json_format: bool = False) -> dict:

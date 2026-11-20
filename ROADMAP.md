@@ -3,10 +3,10 @@
 Durum anahtarı: [ ] başlamadı · [~] sürüyor · [x] bitti
 
 ## 0. Sabit kısıtlar
-- GPU: RTX 4050 Laptop 6 GB VRAM → QLoRA, 3–4B model, kısa sekans (≤1536 token)
-- Disk: C: üzerinde ~11 GB boş → büyük dosyalar için alan açılmalı / başka sürücü
-- Ollama kurulu (llama3.2:3b mevcut → baseline adayı)
-- Python 3.12, pandas, numpy, yfinance kurulu; torch/transformers/peft/trl YOK
+- GPU: RTX 4060 Laptop 8 GB VRAM → QLoRA, 3–4B model, kısa sekans (≤1536–2048 token)
+- Disk: C: üzerinde ~127 GB boş (proje C:\Projects\econist-harness; HF cache `.cache/hf`)
+- Ollama kurulu: `qwen3:4b-instruct-2507-q4_K_M` (base model = fine-tune'un hazır hâli) + `llama3.1:8b` (büyük hazır referans)
+- Python 3.11.9 venv; torch 2.14.1+cu126, transformers, peft, trl, bitsandbytes kurulu
 - Final sistem: bulut API yok, internet yok, tamamen yerel
 - Notlandırma: canlı, önceden verilmeyen sorular. Metrikler: sayısal halüsinasyon, hatalı araç çağrısı,
   kanıtsız sonuç, kanıt bütünlüğü/tekrarlanabilirlik, kural ihlali (tavsiye, kalite/backtest atlama)
@@ -76,7 +76,12 @@ Hedef: **~2.500–4.000 örnek**, otomatik üretim, gerçek araç çıktılarıy
 - **Çıktı:** `finetune/data/{train,val,test}.jsonl` + veri hazırlama dokümantasyonu
 
 ## Faz 6 — İnce ayar (≈ 2–3 gün, deneme dahil)
-- Aday: **Qwen2.5-3B-Instruct** (araç çağırma/JSON iyi, 6 GB'a 4-bit sığar). Alternatif: Qwen3-4B, Llama-3.2-3B, Phi-3.5-mini
+- **Seçilen model: `Qwen/Qwen3-4B-Instruct-2507`** (karar 2026-11-19, web araştırmasıyla teyitli). Gerekçe: yalnız non-thinking (`<think>` yok),
+  BFCL-v3 61.9 (Qwen3-4B: 57.6), çok dilli (MMLU-ProX 61.6), Apache-2.0, 4-bit QLoRA 8 GB'a sığar, Ollama'da resmi etiket
+  (`qwen3:4b-instruct-2507-q4_K_M`). HF ağırlıkları `.cache/hf` altında.
+- Reddedilen: **Qwen3.5-4B** (daha yeni, ama Unsloth 4-bit QLoRA önermiyor → bf16 LoRA ≈10 GB VRAM > 8 GB; Qwen3.5 GGUF'ları Ollama'da çalışmıyor;
+  multimodal + hibrit DeltaNet, transformers v5 gerekir). Yedek: Llama-3.2-3B-Instruct (Türkçe daha zayıf)
+- Karşılaştırma (Faz 7): base Qwen3-4B-2507 vs fine-tuned + `llama3.1:8b` hazır büyük referans
 - [ ] QLoRA (4-bit NF4, r=16, alpha=32, lr≈2e-4, grad checkpointing, batch 1 + grad accum), loss yalnız asistan tokenlarında
 - [ ] 2–3 hiperparametre denemesi, en iyi val/test seçimi
 - [ ] LoRA merge → GGUF (Q4_K_M) → `ollama create` ile yerel model
@@ -102,8 +107,8 @@ Hedef: **~2.500–4.000 örnek**, otomatik üretim, gerçek araç çıktılarıy
 ## Riskler
 | Risk | Önlem |
 |---|---|
-| Disk 11 GB | Faz 0'da alan aç; model/cache'i ikinci sürücüye al |
-| 6 GB VRAM | 3B model + kısa sekans + grad checkpointing; gerekirse Colab/Kaggle ücretsiz GPU yedeği (yalnız eğitim, veri hassas değil) |
+| Disk | Çözüldü: C: ~127 GB boş |
+| 8 GB VRAM | 4B model 4-bit + kısa sekans + grad checkpointing; gerekirse Colab/Kaggle ücretsiz GPU yedeği (yalnız eğitim, veri hassas değil) |
 | Fintables erişimi | Hocaya sor; yedek yfinance + disclosure tarihi tahmini (açıkça belgelenmiş) |
 | Canlı testte bilinmeyen soru | Soru çeşitliliği + held-out test; araç çağrısı şemasını katı tut |
 | Veri sızıntısı | Faz 2'de point-in-time testleri; gate HARD_BLOCK |
