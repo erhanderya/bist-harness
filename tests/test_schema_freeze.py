@@ -17,7 +17,7 @@ def test_frozen_schema_matches_live_tools():
 
 
 def test_all_tools_registered_in_declared_order():
-    assert set(REGISTRY) == set(ORDER) and len(ORDER) == 17
+    assert set(REGISTRY) == set(ORDER) and len(ORDER) == 18
 
 
 def test_every_tool_description_and_param_is_documented():
