@@ -112,3 +112,14 @@ def test_unrecovered_model_input_error_is_only_a_warning():
 def test_data_error_still_investigates():
     g = policy.risk_gate([_q(), _err("get_fundamental_metrics", "NO_FUNDAMENTALS")], require_backtest=False)
     assert g["verdict"] == "INVESTIGATE" and "TOOL_ERROR" in g["reasons"]
+
+
+def test_rejected_pattern_numbers_are_citable(db):
+    """A not-significant pattern is still a fact the answer must quote (counts, means); significance is stated in the sentence."""
+    from bist.tools.evidence import EXTRACTORS
+    from bist.tools.research import test_weekday_pattern as twp
+    e = twp(ticker="THYAO", pattern="weekday_sequence", down_days=["MON", "TUE", "WED"], up_days=["THU", "FRI"], start="2024-01-01", end="2025-12-31", as_of=AS_OF)
+    items = EXTRACTORS["test_weekday_pattern"]({"call_id": "C1", "tool": "test_weekday_pattern", "envelope": e})
+    stats = [it for it in items if it["kind"] == "pattern_stats"]
+    assert len(stats) == 1 and stats[0]["commit"] and "Verdict: not significant" in stats[0]["statement"]
+    assert policy.signals([{"tool": "test_weekday_pattern", "envelope": e}], "THYAO", AS_OF)["pattern"]["present"] is False

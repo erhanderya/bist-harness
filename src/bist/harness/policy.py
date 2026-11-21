@@ -267,7 +267,7 @@ def build_explanation(action: str, bundle: dict, gate: dict, rationale: str = ""
     obs = {it["id"]: it for it in bundle["observed"]}
     committed = [obs[i] for i in bundle["committed_ids"]]
     order = ["fundamental_change", "fundamental", "disclosure_summary", "catchup_history", "macro_sensitivity", "reversal_condition", "reversal_history",
-             "reversal", "sector", "pattern", "disclosure", "technical", "backtest", "valuation", "macro", "macro_gap", "quality"]
+             "reversal", "sector", "pattern", "pattern_stats", "disclosure", "technical", "backtest", "valuation", "macro", "macro_gap", "quality"]
     gaps = [it for it in committed if it["kind"] == "data_gap"][:MAX_GAP_LINES]
     committed = [it for it in committed if it["kind"] != "data_gap"]
     committed.sort(key=lambda it: order.index(it["kind"]) if it["kind"] in order else 99)

@@ -76,7 +76,8 @@ Tasarım: `docs/superpowers/specs/2026-11-19-tool-schema-v1.1-design.md`; plan: 
 - [x] 17 durumlu harness (START…LOG_AND_CLOSE; spesifikasyondaki tüm durumlar): durum başına izinli araçlar, kalite/kanıt/backtest/gate atlanamaz, as_of sızıntısı engelli → `harness/machine.py`, `states.py`
 - [x] Sonuç etiketi doğrulayıcı: 8 eylem + gate/kanıt izinleri + sayı/alıntı/tavsiye dili kontrolü → `harness/policy.py`
 - [x] Committed Evidence Set, risk gate, insan onayı (zorunlu), SQLite karar logu (`data/db/decisions.sqlite`), `replay_analysis`, geçmiş vaka hafızası (`recall`)
-- [x] LLM istemci katmanı: Ollama tool-calling döngüsü (`harness/llm_agent.py`; sahte modelle test edildi, gerçek model denemesi Faz 6 öncesi)
+- [x] LLM istemci katmanı: Ollama tool-calling döngüsü (`harness/llm_agent.py`)
+- [x] v2 (2026-11-21): geçerli konuşma formatı (her araç çağrısından sonra tool mesajı), odak/tarih/dönem seçimi modelde, kompakt bağlam (16k), düzeltilen model girdisi hatası kapıyı düşürmez. **Base model ölçümü:** `docs/eval/baseline_base_model_2026-11-21.md` (5/5 doğru seçim ve doğrulanmış cevap; parametre hataları ve içerik zayıf → Faz 5 hedefleri)
 - **Çıktı:** base model ile uçtan uca çalışan harness (henüz fine-tune yok = deney A/B/C temeli)
 
 ## Faz 5 — Eğitim verisi üretimi (≈ 3–4 gün)

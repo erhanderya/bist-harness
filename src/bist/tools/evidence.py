@@ -176,9 +176,16 @@ def _pattern(c):
     stmt = (f"{d['ticker']}: pattern '{name}' occurred {d['occurrences']} times; mean {_p(d['mean'], 2)} vs baseline {_p(d['baseline_mean'], 2)}, hit rate {_p(d['hit_rate'], 0, False)}; "
             f"p-value after multiple-testing correction {_n(d['p_value_bonferroni'], 3)}; out-of-sample same sign: {d['oos_same_sign']}; years with same sign {d['years_same_sign_as_overall']}/{d['years_tested']}; "
             f"XU100 shows the same effect: {d['market_wide_effect']}.")
+    verdict = ("stock-specific, significant and stable" if d["stock_specific_evidence"] else
+               "market-wide effect, not stock-specific" if d["market_wide_effect"] else "not significant or not stable: treat as noise")
+    stmt += f" Verdict: {verdict}."
     ok = bool(d["stock_specific_evidence"])
     reason = None if ok else ("MARKET_WIDE_EFFECT (not stock-specific)" if d["market_wide_effect"] else "NOT_SIGNIFICANT_OR_UNSTABLE")
     out = [_item("pattern", c, stmt, {"p_adj": d["p_value_bonferroni"]}, commit=ok, reason=reason, ticker=d["ticker"])]
+    if not ok:  # the rejection itself must be quotable: descriptive facts + verdict, citable, never support for a candidate
+        out.append(_item("pattern_stats", c, f"{d['ticker']}: pattern '{name}' descriptive statistics: {d['occurrences']} occurrences, mean {_p(d['mean'], 2)}, "
+                                             f"median {_p(d.get('median'), 2)} vs unconditional {_p(d['baseline_mean'], 2)}, hit rate {_p(d['hit_rate'], 0, False)}. Verdict: {verdict}.",
+                         {"verdict": verdict}, ticker=d["ticker"]))
     for key, lab in (("in_sample", "in-sample"), ("out_of_sample", "out-of-sample")):
         s = d.get(key)
         if not s:
@@ -188,7 +195,7 @@ def _pattern(c):
                                     f"hit rate {_p(s['hit_rate'], 0, False)}{net}; p-value after multiple-testing correction {_n(s['p_value_bonferroni'], 3)}; overall significant and stable: {d['significant_and_stable']}.",
                          {"segment": key, "n": s["occurrences"]}, ticker=d["ticker"]))  # descriptive segment facts are citable; the verdict item above carries significance
     if not d.get("in_sample") and d.get("net_mean_after_cost") is not None:
-        out.append(_item("pattern", c, f"{d['ticker']}: pattern '{name}' mean net of {_n(d['cost_bps_round_trip'], 0)} bps round-trip costs {_p(d['net_mean_after_cost'], 2)}.", commit=ok, reason=reason, ticker=d["ticker"]))
+        out.append(_item("pattern", c, f"{d['ticker']}: pattern '{name}' mean net of {_n(d['cost_bps_round_trip'], 0)} bps round-trip costs {_p(d['net_mean_after_cost'], 2)}.", ticker=d["ticker"]))
     return out
 
 
