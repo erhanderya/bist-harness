@@ -12,7 +12,7 @@ from bist.tools.news import get_news_events, get_speech_features  # noqa: E402
 def test_frozen_schema_matches_live_tools():
     frozen = json.loads(OUT.read_text(encoding="utf-8"))
     live = build()
-    assert frozen["schema_version"] == SCHEMA_VERSION == "1.0"
+    assert frozen["schema_version"] == SCHEMA_VERSION == "1.1"
     assert frozen["schema_hash"] == live["schema_hash"], "tool schemas changed: bump SCHEMA_VERSION and re-export (this invalidates training data!)"
 
 
