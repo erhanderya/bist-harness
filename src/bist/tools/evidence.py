@@ -139,7 +139,8 @@ def _macro(c):
     if v:
         out.append(_item("macro", c, f"VIX {_n(v['value'], 1)} ({c['envelope']['data']['regime']['vix_regime']} regime); DXY {_n((d.get('dxy') or {}).get('value'), 1)}; Brent {_n((d.get('brent') or {}).get('value'), 1)}.", {"vix": v["value"]}))
     miss = ", ".join(c["envelope"]["data"]["unavailable_series"])
-    out.append(_item("macro_gap", c, f"Not available: {miss}. No statement about Turkish policy rates or inflation can be made.", commit=True))
+    if miss:
+        out.append(_item("macro_gap", c, f"Not available: {miss}. No statement about Turkish policy rates or inflation can be made.", commit=True))
     return out
 
 

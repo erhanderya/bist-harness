@@ -1005,7 +1005,7 @@
   },
   {
    "name": "get_macro_context",
-   "description": "Market-based macro context at as_of (D-1 rule): USD/TRY, EUR/TRY, DXY, VIX, US 10Y, Fed funds and target range, Brent, gold, S&P 500 with changes; reports which macro series are NOT yet available (TCMB policy rate, TUIK CPI).",
+   "description": "Macro context at as_of (D-1 rule): USD/TRY, EUR/TRY, DXY, VIX, US 10Y, Fed funds and target range, Brent, gold, S&P 500, and TCMB series (CBRT USD/TRY, policy-rate proxy, CPI y/y by publication date) with changes; optional [start, end] range statistics per series.",
    "input_schema": {
     "properties": {
      "as_of": {
@@ -1019,7 +1019,7 @@
        }
       ],
       "default": null,
-      "description": "Analysis date. Values are taken from the last observation STRICTLY BEFORE this date (global closes happen after the BIST close)."
+      "description": "Analysis date. Values are taken from the last observation STRICTLY BEFORE this date (global closes happen after the BIST close; monthly CPI only after its publication date)."
      },
      "lookback_days": {
       "default": 20,
@@ -1027,6 +1027,65 @@
       "maximum": 250,
       "minimum": 5,
       "type": "integer"
+     },
+     "series": {
+      "anyOf": [
+       {
+        "items": {
+         "enum": [
+          "usdtry",
+          "eurtry",
+          "dxy",
+          "brent",
+          "gold",
+          "sp500",
+          "vix",
+          "us10y",
+          "fed_funds_effective",
+          "fed_target_upper",
+          "fed_target_lower",
+          "usdtry_tcmb",
+          "policy_rate",
+          "cpi_yoy"
+         ],
+         "type": "string"
+        },
+        "maxItems": 14,
+        "minItems": 1,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Subset of series (default: all). TCMB: usdtry_tcmb (CBRT USD/TRY), policy_rate (CBRT funding rate), cpi_yoy (CPI y/y %)."
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Optional period start: adds per-series start/end value, change, min/max and observation count over [start, end]."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Period end for the range figures (default and maximum: as_of)."
      }
     },
     "type": "object"
@@ -1861,7 +1920,7 @@
   },
   {
    "name": "get_macro_context",
-   "description": "Market-based macro context at as_of (D-1 rule): USD/TRY, EUR/TRY, DXY, VIX, US 10Y, Fed funds and target range, Brent, gold, S&P 500 with changes; reports which macro series are NOT yet available (TCMB policy rate, TUIK CPI)",
+   "description": "Macro context at as_of (D-1 rule): USD/TRY, EUR/TRY, DXY, VIX, US 10Y, Fed funds and target range, Brent, gold, S&P 500, and TCMB series (CBRT USD/TRY, policy-rate proxy, CPI y/y by publication date) with changes; optional [start, end] range statistics per series",
    "params": {
     "as_of": {
      "type": "date",
@@ -1871,6 +1930,18 @@
      "type": "integer",
      "required": false,
      "default": 20
+    },
+    "series": {
+     "type": "list[usdtry|eurtry|dxy|brent|gold|sp500|vix|us10y|fed_funds_effective|fed_target_upper|fed_target_lower|usdtry_tcmb|policy_rate|cpi_yoy]",
+     "required": false
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
     }
    }
   },
@@ -2087,5 +2158,5 @@
    }
   }
  },
- "schema_hash": "77a421576d0a9aa0"
+ "schema_hash": "4b41af9dc2f3fffb"
 }
