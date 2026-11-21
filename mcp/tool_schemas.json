@@ -344,7 +344,7 @@
        }
       ],
       "default": null,
-      "description": "Subset of event types; default all for the direction. Valid: rsi_oversold_exit, bollinger_lower_reclaim, supertrend_flip_up, kama_cross_up, macd_cross_up, ichimoku_tk_cross_up, ichimoku_cloud_breakout_up, rsi_overbought_exit, bollinger_upper_rejection, supertrend_flip_down, kama_cross_down, macd_cross_down, ichimoku_tk_cross_down, ichimoku_cloud_breakdown"
+      "description": "Subset of event types; default all for the direction. Valid: rsi_oversold_exit, bollinger_lower_reclaim, supertrend_flip_up, kama_cross_up, macd_cross_up, ichimoku_tk_cross_up, ichimoku_cloud_breakout_up, rsi_overbought_exit, bollinger_upper_rejection, supertrend_flip_down, kama_cross_down, macd_cross_down, ichimoku_tk_cross_down, ichimoku_cloud_breakdown, bollinger_lower_touch, bollinger_upper_touch"
      },
      "lookback_days": {
       "default": 1260,
@@ -366,6 +366,66 @@
       "maximum": 30,
       "minimum": 0,
       "type": "integer"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Statistics window start; when start or end is given it replaces lookback_days and every event in the window is listed."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Statistics window end (default and maximum: as_of)."
+     },
+     "condition_sets": {
+      "anyOf": [
+       {
+        "items": {
+         "items": {
+          "enum": [
+           "rsi_oversold",
+           "rsi_trough",
+           "high_volume",
+           "supertrend_bearish",
+           "supertrend_bullish",
+           "below_ichimoku_cloud",
+           "above_ichimoku_cloud",
+           "macd_hist_negative",
+           "macd_hist_positive",
+           "below_kama",
+           "above_kama"
+          ],
+          "type": "string"
+         },
+         "maxItems": 4,
+         "minItems": 1,
+         "type": "array"
+        },
+        "maxItems": 6,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Groups of event-day conditions (all must hold) reported as separate subgroups, e.g. [[rsi_trough, high_volume], [supertrend_bearish, below_ichimoku_cloud]]."
      }
     },
     "required": [
@@ -1026,7 +1086,7 @@
           "type": "string"
          },
          "trigger_events": {
-          "description": "Bullish events that trigger an entry. Valid: rsi_oversold_exit, bollinger_lower_reclaim, supertrend_flip_up, kama_cross_up, macd_cross_up, ichimoku_tk_cross_up, ichimoku_cloud_breakout_up",
+          "description": "Bullish events that trigger an entry. Valid: rsi_oversold_exit, bollinger_lower_reclaim, supertrend_flip_up, kama_cross_up, macd_cross_up, ichimoku_tk_cross_up, ichimoku_cloud_breakout_up, bollinger_lower_touch",
           "items": {
            "type": "string"
           },
@@ -1447,6 +1507,18 @@
      "type": "integer",
      "required": false,
      "default": 5
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
+    },
+    "condition_sets": {
+     "type": "list[list[rsi_oversold|rsi_trough|high_volume|supertrend_bearish|supertrend_bullish|below_ichimoku_cloud|above_ichimoku_cloud|macd_hist_negative|macd_hist_positive|below_kama|above_kama]]",
+     "required": false
     }
    }
   },
@@ -1873,5 +1945,5 @@
    }
   }
  },
- "schema_hash": "e676cccdef4aed6a"
+ "schema_hash": "5b5b850a22adb915"
 }
