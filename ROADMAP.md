@@ -61,7 +61,7 @@ Tasarım: `docs/superpowers/specs/2026-11-19-tool-schema-v1.1-design.md`; plan: 
 - [x] YENİ `analyze_macro_sensitivity`: hisse ↔ makro faktör korelasyon/beta, faktör yükselir/düşerken getiri, yıllık kararlılık, XU100 kıyası; tahmin yok (S5)
 - [x] Harness: yeni araçlar durumlarına bağlandı; kanıt cümleleri (`catchup_history`, `disclosure`, `macro_sensitivity`, `reversal_condition`, `data_gap`); `POTENTIAL_CATCH_UP_CANDIDATE` için `test_catch_up_history` şartı (10 günde n≥10 ve daralma >%50); `reference.plan` tarih aralığı/peers/desen/koşul/makro faktör alır
 - [x] Kabul: `tests/test_sample_questions.py` (5 soru, analiz tarihi 2026-09-10, hiçbir çıktı tarihi sonrasını göstermez) ve `tests/test_harness_v11.py` (referans ajan 5 soruda doğrulayıcıdan geçer)
-- **Çıktı:** şema **v1.1, 19 araç** (tam ~7.0k token / kompakt ~2.6k token; model her durumda yalnız o durumun araçlarını görür), 136 test yeşil ✅
+- **Çıktı:** şema **v1.1, 19 araç** (tam ~7.0k token / kompakt ~2.6k token; model her durumda yalnız o durumun araçlarını görür), 140 test yeşil ✅
 
 ## Faz 3 — 4 araştırma senaryosu + raporlar (≈ 3–4 gün, Faz 2 ile paralel yürür)
 - [x] S1 Sektör laggard/catch-up (5/10/20 gün, yanlış pozitifler)
