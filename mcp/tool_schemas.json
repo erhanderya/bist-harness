@@ -497,6 +497,113 @@
    }
   },
   {
+   "name": "test_catch_up_history",
+   "description": "History of similar lags: every past day the ticker trailed the peer median by at least the given gap over L days, and whether the gap narrowed or closed within 5/10/20 days (hit rate, false-positive rate, excess vs XU100, split by sector strength). Completed windows only.",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker whose lag vs. its peers is studied, e.g. MAVI",
+      "type": "string"
+     },
+     "peers": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 29,
+        "minItems": 1,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Explicit peer list (default: the ticker's peer group, ticker excluded)."
+     },
+     "lookback_days": {
+      "default": 20,
+      "description": "L: trading days over which the lag is measured.",
+      "maximum": 60,
+      "minimum": 5,
+      "type": "integer"
+     },
+     "horizons": {
+      "default": [
+       5,
+       10,
+       20
+      ],
+      "description": "Forward horizons (trading days) at which closing is checked.",
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "type": "array"
+     },
+     "min_lag_gap": {
+      "anyOf": [
+       {
+        "maximum": 1,
+        "minimum": 0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Lag threshold as a fraction (0.05 = 5 points behind the peer median); default: the ticker's current L-day lag."
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "First event date (default: 5 years before end)."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Last event date (default and maximum: as_of)."
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is used."
+     }
+    },
+    "required": [
+     "ticker"
+    ],
+    "type": "object"
+   }
+  },
+  {
    "name": "test_weekday_pattern",
    "description": "Tests a calendar/multi-day pattern: occurrences, conditional returns vs baseline, p-value with multiple-testing correction, in-sample vs out-of-sample, per-year stability and whether the effect is just market-wide (XU100 reference).",
    "input_schema": {
@@ -1337,6 +1444,50 @@
    }
   },
   {
+   "name": "test_catch_up_history",
+   "description": "History of similar lags: every past day the ticker trailed the peer median by at least the given gap over L days, and whether the gap narrowed or closed within 5/10/20 days (hit rate, false-positive rate, excess vs XU100, split by sector strength)",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "peers": {
+     "type": "list[string]",
+     "required": false
+    },
+    "lookback_days": {
+     "type": "integer",
+     "required": false,
+     "default": 20
+    },
+    "horizons": {
+     "type": "list[integer]",
+     "required": false,
+     "default": [
+      5,
+      10,
+      20
+     ]
+    },
+    "min_lag_gap": {
+     "type": "number",
+     "required": false
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    }
+   }
+  },
+  {
    "name": "test_weekday_pattern",
    "description": "Tests a calendar/multi-day pattern: occurrences, conditional returns vs baseline, p-value with multiple-testing correction, in-sample vs out-of-sample, per-year stability and whether the effect is just market-wide (XU100 reference)",
    "params": {
@@ -1636,5 +1787,5 @@
    }
   }
  },
- "schema_hash": "ab6afba17232107f"
+ "schema_hash": "db24324e01c76ae7"
 }
