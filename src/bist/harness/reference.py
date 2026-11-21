@@ -19,22 +19,42 @@ STAGES = {  # optional analysis states executed per focus
 
 
 def plan(ticker: str, focus: str, horizon_days: int = 10, weekday: str = "THU", pattern: str = "weekday_return",
-         variant: str | None = None, hold_days: int = 5) -> list[tuple[str, str, dict]]:
-    """[(state, tool, params)] for the focus. Pure data: also used to build training traces."""
+         variant: str | None = None, hold_days: int = 5, start: str | None = None, end: str | None = None,
+         peers: list[str] | None = None, pattern_kw: dict | None = None, reversal_kw: dict | None = None,
+         macro_factor: str | None = None) -> list[tuple[str, str, dict]]:
+    """[(state, tool, params)] for the focus. Pure data: also used to build training traces.
+
+    start/end: the question's data period, passed to every range-aware tool. peers: explicit peer list from the question.
+    pattern_kw / reversal_kw: extra test_weekday_pattern / detect_reversal_events params. macro_factor: adds analyze_macro_sensitivity.
+    """
+    rng = {k: v for k, v in (("start", start), ("end", end)) if v}
+    dq = {"tickers": [ticker], "analysis_type": focus}
+    if end:
+        dq["evidence_dates"] = [{"source": "analysis window end", "date": end}]
+    sector = {"tickers": [ticker, *peers]} if peers else {"sector": ticker}
     p = [("LOAD_MARKET_DATA", "get_stock_history", {"ticker": ticker, "max_rows": 5}),
          ("LOAD_MARKET_DATA", "get_index_history", {"max_rows": 5}),
-         ("CHECK_DATA_QUALITY", "check_data_quality", {"tickers": [ticker], "analysis_type": focus}),
+         ("CHECK_DATA_QUALITY", "check_data_quality", dq),
          ("CALCULATE_TECHNICALS", "calculate_indicators", {"ticker": ticker}),
-         ("RUN_SECTOR_RELATIVE_ANALYSIS", "rank_sector_relative_strength", {"sector": ticker, "horizon_days": horizon_days})]
+         ("RUN_SECTOR_RELATIVE_ANALYSIS", "rank_sector_relative_strength", {**sector, "horizon_days": horizon_days})]
+    if focus in ("sector_catchup", "general"):
+        ch = {"ticker": ticker, "lookback_days": min(60, max(5, horizon_days)), **rng}
+        if peers:
+            ch["peers"] = list(peers)
+        p.append(("RUN_SECTOR_RELATIVE_ANALYSIS", "test_catch_up_history", ch))
     if focus == "calendar_pattern":
-        extra = {"weekday": weekday} if pattern != "bounce_after_n_down_days" else {}
-        p.append(("RUN_PATTERN_AND_REVERSAL_ANALYSIS", "test_weekday_pattern", {"ticker": ticker, "pattern": pattern, **extra}))
+        extra = {"weekday": weekday} if pattern in ("weekday_return", "bounce_after_down_day") else {}
+        p.append(("RUN_PATTERN_AND_REVERSAL_ANALYSIS", "test_weekday_pattern", {"ticker": ticker, "pattern": pattern, **extra, **(pattern_kw or {}), **rng}))
     else:
-        p.append(("RUN_PATTERN_AND_REVERSAL_ANALYSIS", "detect_reversal_events", {"ticker": ticker, "direction": "both"}))
+        p.append(("RUN_PATTERN_AND_REVERSAL_ANALYSIS", "detect_reversal_events", {"ticker": ticker, "direction": "both", **(reversal_kw or {}), **rng}))
     p += [("LOAD_FUNDAMENTALS", "get_fundamental_metrics", {"ticker": ticker}),
-          ("LOAD_FUNDAMENTALS", "calculate_fundamental_change", {"ticker": ticker}),
-          ("LOAD_MACRO_CONTEXT", "get_macro_context", {}),
-          ("LOAD_NEWS_AND_SPEECH_CONTEXT", "get_news_events", {"ticker": ticker}),
+          ("LOAD_FUNDAMENTALS", "calculate_fundamental_change", {"ticker": ticker})]
+    if focus == "fundamental_reaction":
+        p.append(("LOAD_FUNDAMENTALS", "analyze_disclosure_reactions", {"ticker": ticker, **rng}))
+    p.append(("LOAD_MACRO_CONTEXT", "get_macro_context", dict(rng)))
+    if macro_factor:
+        p.append(("LOAD_MACRO_CONTEXT", "analyze_macro_sensitivity", {"ticker": ticker, "factor": macro_factor, **rng}))
+    p += [("LOAD_NEWS_AND_SPEECH_CONTEXT", "get_news_events", {"ticker": ticker}),
           ("BUILD_EVIDENCE", "build_evidence_bundle", {}),
           ("PREVIEW_STRATEGIES", "generate_strategy_variants", {"hold_days": hold_days}),
           ("RUN_BACKTEST", "run_backtest", {"variant": variant or DEFAULT_VARIANT[focus], "hold_days": hold_days})]
@@ -48,6 +68,8 @@ def run(question: str, ticker: str, focus: str = "general", as_of: str | None = 
     h.select_universe([ticker])
     t = h.tickers[0]
     wanted = STAGES[focus] | {"LOAD_MARKET_DATA", "CHECK_DATA_QUALITY", "BUILD_EVIDENCE", "PREVIEW_STRATEGIES", "RUN_BACKTEST"}
+    if plan_kw.get("macro_factor"):
+        wanted |= {"LOAD_MACRO_CONTEXT"}
     for state, tool, params in plan(t, focus, **plan_kw):
         if state not in wanted:
             continue

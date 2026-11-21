@@ -98,6 +98,17 @@ def risk_gate(calls: list[dict], require_backtest: bool = True) -> dict:
 
 
 # ------------------------------------------------------------------ signals
+CATCHUP_MIN_N = 10          # POTENTIAL_CATCH_UP_CANDIDATE needs >= this many completed 10-day windows of similar past lags
+CATCHUP_MIN_NARROWED = 0.5  # ... and the gap must have narrowed in more than this share of them
+
+
+def catchup_history_ok(env: dict | None) -> bool:
+    if not env or not _ok(env):
+        return False
+    h = (env["data"].get("by_horizon") or {}).get("h10") or {}
+    return (h.get("n") or 0) >= CATCHUP_MIN_N and (h.get("narrowed_rate") or 0) > CATCHUP_MIN_NARROWED
+
+
 def signals(calls: list[dict], ticker: str, as_of: str | None) -> dict:
     s = {"fund": {"present": False, "partial": False, "deterioration": False}, "reversal": {"present": False, "partial": False},
          "catchup": {"present": False, "partial": False}, "pattern": {"present": False, "market_wide": False, "tested": False}}
@@ -139,7 +150,9 @@ def signals(calls: list[dict], ticker: str, as_of: str | None) -> dict:
         d = sec["data"]
         me = next((m for m in d["ranking_lagging_first"] if m["ticker"] == ticker), None)
         if me and me["lag_rank"] <= 2:
-            s["catchup"].update(present=bool(d["sector_strong"]), partial=not d["sector_strong"])
+            hist_ok = catchup_history_ok(_last(calls, "test_catch_up_history"))
+            present = bool(d["sector_strong"]) and hist_ok
+            s["catchup"].update(present=present, partial=not present, history_ok=hist_ok)
     for c in calls:
         if c["tool"] == "test_weekday_pattern" and _ok(c["envelope"]):
             d = c["envelope"]["data"]
@@ -208,6 +221,8 @@ def decide(calls: list[dict], ticker: str, focus: str, as_of: str | None, gate: 
 
 
 # ------------------------------------------------------------------ explanation + validation
+MAX_EVIDENCE_LINES = 9  # reference explanation: committed facts quoted (plus up to MAX_GAP_LINES data-gap notes)
+MAX_GAP_LINES = 2
 DISCLAIMER = "Historical evidence only; educational analytical state, not investment advice and not a trade instruction."
 _NUM = re.compile(r"(?<![\w.])[-+−]?\d+(?:[.,]\d+)?")
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -238,12 +253,15 @@ def build_explanation(action: str, bundle: dict, gate: dict, rationale: str = ""
     """Reference explanation: cites committed evidence ids with the tool's own statements; quotes nothing else."""
     obs = {it["id"]: it for it in bundle["observed"]}
     committed = [obs[i] for i in bundle["committed_ids"]]
-    order = ["fundamental_change", "fundamental", "reversal", "reversal_history", "sector", "pattern", "technical", "backtest", "valuation", "macro", "macro_gap", "quality"]
+    order = ["fundamental_change", "fundamental", "disclosure_summary", "catchup_history", "macro_sensitivity", "reversal_condition", "reversal_history",
+             "reversal", "sector", "pattern", "disclosure", "technical", "backtest", "valuation", "macro", "macro_gap", "quality"]
+    gaps = [it for it in committed if it["kind"] == "data_gap"][:MAX_GAP_LINES]
+    committed = [it for it in committed if it["kind"] != "data_gap"]
     committed.sort(key=lambda it: order.index(it["kind"]) if it["kind"] in order else 99)
     lines = [f"Educational analytical state: {action}."]
-    if committed:
+    if committed or gaps:
         lines.append("Evidence used:")
-        lines += [f"[{it['id']}] {it['statement']}" for it in committed[:7]]
+        lines += [f"[{it['id']}] {it['statement']}" for it in committed[:MAX_EVIDENCE_LINES] + gaps]
     else:
         lines.append("No evidence was committed for this conclusion.")
     kind = {it["id"]: it["kind"] for it in bundle["observed"]}
