@@ -4,6 +4,11 @@ Per state the model sees ONLY the tools that state exposes (+ a `next_state` pse
 (the deterministic evidence statements, never raw 5 KB JSON). At GENERATE_EXPLANATION it must return {"action", "explanation"};
 the harness validator rejects invented numbers / wrong actions / advice wording and the model gets the violations back (max 2 retries).
 No cloud API is used anywhere: `OllamaChat` talks to http://localhost:11434.
+
+Conversation format (v2): one growing message list. Every model turn is appended as an assistant message (with its tool_calls),
+followed by exactly one `tool` message per call (`tool_name` set), so the transcript is valid for Ollama/OpenAI-style chat templates
+and is the same format the Faz 5 training traces use (`LLMAgent.messages`). In SELECT_UNIVERSE the model chooses the ticker(s),
+the focus, the analysis date and the question's data period; caller-supplied `as_of`/`focus` take precedence.
 """
 from __future__ import annotations
 
@@ -11,7 +16,9 @@ import json
 import urllib.request
 from typing import Callable
 
-from ..tools import REGISTRY
+import pandas as pd
+
+from ..tools import store
 from ..tools.evidence import EXTRACTORS
 from ..tools.export_schemas import OUT as SCHEMA_FILE
 from . import policy
@@ -19,16 +26,29 @@ from .logdb import DecisionLog
 from .machine import Harness, HarnessConfig
 from .states import ALLOWED_TOOLS
 
+FOCI = ["sector_catchup", "technical_reversal", "fundamental_reaction", "calendar_pattern", "general"]
+
 SYSTEM = """You are the analysis agent of a BIST (Borsa Istanbul) educational analytics harness. You work in states; in each state you may call only the tools shown.
 Rules: (1) numbers you write must come from tool output; never invent a number, a news item or a price. (2) Never give investment advice, price targets or buy/sell instructions.
 (3) The only conclusions allowed are: HOLD, WATCH, INVESTIGATE, POTENTIAL_CATCH_UP_CANDIDATE, TECHNICAL_REVERSAL_CANDIDATE, FUNDAMENTAL_IMPROVEMENT_CANDIDATE, REJECT_SIGNAL, ANALYSIS_UNSAFE.
-(4) If a tool reports an error, a missing source, or the data-quality gate blocks the analysis, say so; do not fill the gap. Call `next_state` when you are done with a state."""
+(4) If a tool reports an error, a missing source, or the data-quality gate blocks the analysis, say so; do not fill the gap.
+(5) Use the analysis date and the data period of the question: pass `start`/`end` to every tool that accepts them; never use data after the analysis date.
+Call `next_state` when you are done with a state."""
 
 NEXT_TOOL = {"type": "function", "function": {"name": "next_state", "description": "Finish the current state and move to the next one.", "parameters": {"type": "object", "properties": {}}}}
+SELECT_TOOL = {"type": "function", "function": {
+    "name": "select_universe",
+    "description": "Set up the analysis: the BIST ticker(s) the question is about, the analysis focus, the analysis date and the data period stated in the question.",
+    "parameters": {"type": "object", "required": ["tickers", "focus"], "properties": {
+        "tickers": {"type": "array", "items": {"type": "string"}, "description": "Ticker(s), main one first, e.g. [\"THYAO\"]; for a peer comparison list every stock named."},
+        "focus": {"enum": FOCI, "description": "sector_catchup: laggard vs peers; technical_reversal: indicator/reversal events; fundamental_reaction: financial statements and price reaction; calendar_pattern: weekday/multi-day patterns; general: anything else (incl. macro, advice requests)."},
+        "analysis_date": {"type": "string", "format": "date", "description": "Analysis date YYYY-MM-DD if the question gives one (e.g. 'Today is 10.09.2026' -> 2026-09-10)."},
+        "period_start": {"type": "string", "format": "date", "description": "Start of the data period in the question, YYYY-MM-DD."},
+        "period_end": {"type": "string", "format": "date", "description": "End of the data period in the question, YYYY-MM-DD (not after the analysis date)."}}}}}
 
 
 class OllamaChat:
-    def __init__(self, model: str = "qwen3:4b-instruct-2507-q4_K_M", host: str = "http://localhost:11434", temperature: float = 0.0, num_ctx: int = 8192, timeout: int = 300):
+    def __init__(self, model: str = "qwen3:4b-instruct-2507-q4_K_M", host: str = "http://localhost:11434", temperature: float = 0.0, num_ctx: int = 16384, timeout: int = 300):
         self.model, self.host, self.temperature, self.num_ctx, self.timeout = model, host, temperature, num_ctx, timeout
 
     def __call__(self, messages: list[dict], tools: list[dict] | None = None, json_format: bool = False) -> dict:
@@ -66,42 +86,106 @@ def render(tool: str, env: dict, call_id: str = "C0") -> str:
     return f"{tool}: {env['status']}{' warnings=' + ','.join(w) if w else ''}\n" + json.dumps(env["data"], default=str)[:700]
 
 
+def _date(x) -> str | None:
+    try:
+        return str(pd.Timestamp(str(x)).date()) if x else None
+    except (ValueError, TypeError):
+        return None
+
+
 class LLMAgent:
     def __init__(self, chat: Callable, db: DecisionLog | None = None, config: HarnessConfig | None = None, max_steps_per_state: int = 4, max_retries: int = 2):
         self.chat, self.db, self.cfg = chat, db, config
         self.max_steps, self.max_retries = max_steps_per_state, max_retries
         self.trace: list[dict] = []
+        self.messages: list[dict] = []
+        self.selection: dict = {}
 
+    # ---------------------------------------------------------------- conversation helpers
     def _args(self, tc) -> tuple[str, dict]:
         f = tc["function"]
         a = f.get("arguments") or {}
         return f["name"], (json.loads(a) if isinstance(a, str) else a)
 
+    def _ask(self, tools: list[dict] | None = None, json_format: bool = False) -> dict:
+        """One model turn on the full transcript; the reply is appended as an assistant message."""
+        m = self.chat(self.messages, tools=tools, json_format=json_format) or {}
+        calls = m.get("tool_calls") or []
+        msg = {"role": "assistant", "content": m.get("content") or ""}
+        if calls:
+            msg["tool_calls"] = calls
+        self.messages.append(msg)
+        return {"content": msg["content"], "tool_calls": calls}
 
-    def _work_state(self, h: Harness, msgs: list[dict]) -> None:
-        tdefs = tool_defs(ALLOWED_TOOLS[h.state])
-        prompt = (f"State {h.state}. Allowed tools: {', '.join(ALLOWED_TOOLS[h.state])}. Tickers: {', '.join(h.tickers)}. "
-                  "Call the tool(s) needed for the question (skip the state if none is needed), then next_state.")
+    def _tool_result(self, name: str, content: str) -> None:
+        self.messages.append({"role": "tool", "tool_name": name, "content": content})
+
+    def _user(self, content: str) -> None:
+        self.messages.append({"role": "user", "content": content})
+
+    # ---------------------------------------------------------------- SELECT_UNIVERSE
+    def _select(self) -> dict:
+        """Model sets tickers/focus/date/period. Tickers are validated against the universe; results go back as tool messages."""
+        self._user("State SELECT_UNIVERSE: call select_universe with the ticker(s), the focus, the analysis date and the data period of the question.")
         for _ in range(self.max_steps):
-            m = self.chat(msgs + [{"role": "user", "content": prompt}], tools=tdefs)
-            calls = m.get("tool_calls") or []
-            if not calls:
+            m = self._ask(tools=[SELECT_TOOL])
+            got = None
+            for tc in m["tool_calls"]:
+                try:
+                    n, a = self._args(tc)
+                except (ValueError, KeyError) as e:
+                    self._tool_result("select_universe", f"ERROR MALFORMED_ARGUMENTS - {type(e).__name__}")
+                    continue
+                if n != "select_universe":
+                    self._tool_result(n, "ERROR TOOL_NOT_ALLOWED_IN_STATE - only select_universe is available here")
+                    continue
+                ok, bad = [], []
+                for t in a.get("tickers") or []:
+                    try:
+                        ok.append(store.resolve_ticker(str(t))[0])
+                    except Exception:
+                        bad.append(str(t))
+                self.trace.append({"state": "SELECT_UNIVERSE", "tool": n, "args": a, "result": "ok" if ok and not bad else f"unknown {bad}"})
+                if ok and not bad:
+                    got = {**a, "tickers": list(dict.fromkeys(ok))}
+                    self._tool_result(n, f"select_universe: OK tickers={got['tickers']}")
+                else:
+                    self._tool_result(n, f"select_universe: ERROR UNKNOWN_TICKER {bad or 'none given'}; valid: {', '.join(store.tickers())}")
+            if got:
+                return got
+            if not m["tool_calls"]:
+                self._user("Call select_universe now.")
+        return {}
+
+    # ---------------------------------------------------------------- analysis states
+    def _work_state(self, h: Harness) -> None:
+        tdefs = tool_defs(ALLOWED_TOOLS[h.state])
+        self._user(f"State {h.state}. Allowed tools: {', '.join(ALLOWED_TOOLS[h.state])}. Tickers: {', '.join(h.tickers)}. "
+                   "Call the tool(s) needed for the question (skip the state if none is needed), then next_state.")
+        for _ in range(self.max_steps):
+            m = self._ask(tools=tdefs)
+            if not m["tool_calls"]:
                 return
             done = False
-            for tc in calls:
-                n, a = self._args(tc)
+            for tc in m["tool_calls"]:
+                try:
+                    n, a = self._args(tc)
+                except (ValueError, KeyError) as e:
+                    self._tool_result(tc.get("function", {}).get("name", "unknown"), f"ERROR MALFORMED_ARGUMENTS - {type(e).__name__}")
+                    continue
                 if n == "next_state":
                     done = True
+                    self._tool_result(n, "next_state: OK")
                     continue
                 env = h.call(n, **a)
                 self.trace.append({"state": h.state, "tool": n, "args": a, "status": env["status"]})
-                msgs.append({"role": "tool", "content": render(n, env, h.calls[-1]["call_id"] if env["status"] != "ERROR" and h.calls else "C0")})
+                self._tool_result(n, render(n, env, h.calls[-1]["call_id"] if env["status"] != "ERROR" and h.calls else "C0"))
             if done:
                 return
 
     def _ensure_required(self, h: Harness) -> None:
         """Mandatory tools the model did not call are run by the harness with safe defaults and flagged (the model cannot skip them)."""
-        defaults = {"CHECK_DATA_QUALITY": ("check_data_quality", {"tickers": h.tickers}), "BUILD_EVIDENCE": ("build_evidence_bundle", {}),
+        defaults = {"CHECK_DATA_QUALITY": ("check_data_quality", {"tickers": h.tickers, "analysis_type": h.focus}), "BUILD_EVIDENCE": ("build_evidence_bundle", {}),
                     "RUN_BACKTEST": ("run_backtest", {"variant": "D"})}
         d = defaults.get(h.state)
         if d and not (h.state == "RUN_BACKTEST" and h.blocked()) and not any(c["tool"] == d[0] and c["envelope"]["status"] != "ERROR" for c in h.calls):
@@ -109,28 +193,26 @@ class LLMAgent:
                 h.violations.append({"state": h.state, "tool": d[0], "code": "MANDATORY_TOOL_RUN_BY_HARNESS", "message": f"model did not complete {d[0]} correctly; default parameters used"})
             h.call(d[0], **d[1])
 
-    def run(self, question: str, as_of: str | None = None, focus: str = "general", human: tuple[str, str] | None = None) -> Harness:
-        h = Harness(question, as_of=as_of, focus=focus, db=self.db, config=self.cfg)
-        msgs: list[dict] = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": f"Question: {question}\nAnalysis date: {h.as_of}"}]
+    # ---------------------------------------------------------------- run
+    def run(self, question: str, as_of: str | None = None, focus: str | None = None, human: tuple[str, str] | None = None) -> Harness:
+        self.messages = [{"role": "system", "content": SYSTEM},
+                         {"role": "user", "content": f"Question: {question}" + (f"\nAnalysis date: {as_of}" if as_of else "")}]
+        sel = self._select()
+        self.selection = sel
+        f = focus or (sel.get("focus") if sel.get("focus") in FOCI else "general")
+        h = Harness(question, as_of=as_of or _date(sel.get("analysis_date")), focus=f, db=self.db, config=self.cfg)
         h.advance()                                                       # START -> SELECT_UNIVERSE
-        # SELECT_UNIVERSE: the model names the ticker(s)
-        sel = [{"type": "function", "function": {"name": "select_universe", "description": "Choose the BIST ticker(s) for this analysis.",
-                                                "parameters": {"type": "object", "properties": {"tickers": {"type": "array", "items": {"type": "string"}}}, "required": ["tickers"]}}}]
-        for _ in range(self.max_steps):
-            m = self.chat(msgs + [{"role": "user", "content": "State SELECT_UNIVERSE: call select_universe with the ticker(s) the question is about."}], tools=sel)
-            for tc in m.get("tool_calls") or []:
-                n, a = self._args(tc)
-                if n == "select_universe":
-                    r = h.select_universe(a.get("tickers", []))
-                    self.trace.append({"state": h.state, "tool": n, "args": a, "result": "ok" if r.get("ok") else r["error"]["code"]})
-            if h.tickers:
-                break
-        if not h.tickers:
+        if not sel.get("tickers") or not h.select_universe(sel["tickers"]).get("ok"):
             h.violations.append({"state": h.state, "tool": None, "code": "NO_TICKER_SELECTED", "message": "model did not select a valid ticker"})
             return h
+        ps, pe = _date(sel.get("period_start")), _date(sel.get("period_end"))
+        if pe and pe > h.as_of:
+            pe = h.as_of
+        period = f"; data period {ps or 'not stated'} to {pe or h.as_of} (pass start/end to tools that accept them)" if (ps or pe) else ""
+        self._user(f"Analysis set up: tickers {', '.join(h.tickers)}; focus {h.focus}; analysis date {h.as_of} (no data after it){period}.")
         while h.state != "RISK_GATE":
             if h.state not in ("SELECT_UNIVERSE",) and ALLOWED_TOOLS[h.state] and h.state != "BUILD_EVIDENCE" and not (h.state == "RUN_BACKTEST" and h.blocked()):
-                self._work_state(h, msgs)
+                self._work_state(h)
             self._ensure_required(h)
             if not h.advance()["ok"]:
                 raise RuntimeError(f"harness refused to advance from {h.state}")
@@ -138,12 +220,12 @@ class LLMAgent:
         h.advance()                                                       # -> GENERATE_EXPLANATION
         ev = h.evidence
         obs = {i["id"]: i for i in ev["observed"]}
-        ctx = ("Committed evidence (cite as [E#], quote only these numbers):\n" + "\n".join(f"[{i}] {obs[i]['statement']}" for i in ev["committed_ids"])
+        ctx = ("State GENERATE_EXPLANATION. Committed evidence (cite as [E#], quote only these numbers):\n" + "\n".join(f"[{i}] {obs[i]['statement']}" for i in ev["committed_ids"])
                + f"\nRisk gate: {g['verdict']} {g['reasons']}\nPermitted actions: {g['permitted_actions']}\n"
                + 'Return JSON: {"action": <one permitted action>, "explanation": <short text citing [E#] ids; end with: ' + policy.DISCLAIMER + '>}')
-        feedback = ""
+        self._user(ctx)
         for attempt in range(self.max_retries + 1):
-            m = self.chat(msgs + [{"role": "user", "content": ctx + feedback}], json_format=True)
+            m = self._ask(json_format=True)
             try:
                 out = json.loads(m["content"])
                 res = h.propose(str(out.get("action", "")), str(out.get("explanation", "")))
@@ -153,7 +235,7 @@ class LLMAgent:
             self.trace.append({"state": "GENERATE_EXPLANATION", "attempt": attempt, "ok": res["ok"], "violations": res["violations"]})
             if res["ok"]:
                 break
-            feedback = "\nYour previous answer was rejected: " + "; ".join(res["violations"]) + ". Fix it."
+            self._user("Your previous answer was rejected: " + "; ".join(res["violations"]) + ". Fix it.\n" + ctx)
         if h.final is None:                                               # safe failure instead of an unvalidated conclusion
             ref = h.reference_output()
             h.violations.append({"state": h.state, "tool": None, "code": "LLM_FALLBACK", "message": "model output never passed validation; reference output used and flagged"})
