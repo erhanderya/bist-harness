@@ -1092,6 +1092,87 @@
    }
   },
   {
+   "name": "analyze_macro_sensitivity",
+   "description": "Historical association between a stock and one macro factor over [start, end]: correlation, beta, mean stock return when the factor rose vs fell (and vs XU100), per-year stability and the same figures for XU100 (stock-specific or market-wide). D-1 aligned; association only, no forecast.",
+   "input_schema": {
+    "properties": {
+     "ticker": {
+      "description": "BIST ticker, e.g. EREGL",
+      "type": "string"
+     },
+     "factor": {
+      "description": "Macro factor: usdtry/eurtry/brent/gold/dxy/sp500 as % change; vix, us10y, policy_rate (CBRT), cpi_yoy (CPI y/y) as level change.",
+      "enum": [
+       "usdtry",
+       "eurtry",
+       "policy_rate",
+       "cpi_yoy",
+       "brent",
+       "gold",
+       "vix",
+       "dxy",
+       "sp500",
+       "us10y"
+      ],
+      "type": "string"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Period start (default: 3 years before end)."
+     },
+     "end": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Period end (default and maximum: as_of)."
+     },
+     "frequency": {
+      "default": "weekly",
+      "description": "Return period.",
+      "enum": [
+       "weekly",
+       "monthly"
+      ],
+      "type": "string"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Analysis date; nothing after it is used."
+     }
+    },
+    "required": [
+     "ticker",
+     "factor"
+    ],
+    "type": "object"
+   }
+  },
+  {
    "name": "get_news_events",
    "description": "Timestamped, legally accessible news/disclosure metadata for a ticker or topic (title, time, source). Returns SOURCE_NOT_AVAILABLE while no dataset is installed.",
    "input_schema": {
@@ -1946,6 +2027,37 @@
    }
   },
   {
+   "name": "analyze_macro_sensitivity",
+   "description": "Historical association between a stock and one macro factor over [start, end]: correlation, beta, mean stock return when the factor rose vs fell (and vs XU100), per-year stability and the same figures for XU100 (stock-specific or market-wide)",
+   "params": {
+    "ticker": {
+     "type": "string",
+     "required": true
+    },
+    "factor": {
+     "type": "usdtry|eurtry|policy_rate|cpi_yoy|brent|gold|vix|dxy|sp500|us10y",
+     "required": true
+    },
+    "start": {
+     "type": "date",
+     "required": false
+    },
+    "end": {
+     "type": "date",
+     "required": false
+    },
+    "frequency": {
+     "type": "weekly|monthly",
+     "required": false,
+     "default": "weekly"
+    },
+    "as_of": {
+     "type": "date",
+     "required": false
+    }
+   }
+  },
+  {
    "name": "get_news_events",
    "description": "Timestamped, legally accessible news/disclosure metadata for a ticker or topic (title, time, source)",
    "params": {
@@ -2158,5 +2270,5 @@
    }
   }
  },
- "schema_hash": "4b41af9dc2f3fffb"
+ "schema_hash": "88317a2b004c3ac0"
 }

@@ -43,3 +43,46 @@ def test_macro_unknown_series():
 
 def test_macro_causal(truncate_store):
     assert_causal(get_macro_context, "2026-09-10", truncate_store, start="2024-01-01")
+
+
+# ------------------------------------------------------------- analyze_macro_sensitivity (Q5)
+import json  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+from bist.tools.macro_sensitivity import analyze_macro_sensitivity, sensitivity_core  # noqa: E402
+
+
+def test_sensitivity_core_perfect_beta():
+    idx = pd.bdate_range("2024-01-01", periods=300)
+    f = pd.Series(100 * np.cumprod(1 + np.random.default_rng(0).normal(0, .01, 300)), index=idx)
+    stock = 50 * (f / f.iloc[0]) ** 2
+    d = sensitivity_core(stock, f * 0 + 1, f, "weekly", "pct")
+    assert d["correlation"] > 0.99 and d["beta"] == pytest.approx(2, rel=0.1)
+    assert d["xu100"]["correlation"] is None                      # flat index: undefined, not invented
+
+
+def test_q5_eregl_usdtry():
+    r = analyze_macro_sensitivity(ticker="EREGL", factor="usdtry", start="2024-01-01", end="2026-09-10", as_of="2026-09-10")
+    assert r["status"] != "ERROR", r["error"]
+    d = r["data"]
+    assert d["n_periods"] > 100 and d["association_only"].startswith("correlation is not causation")
+    assert "xu100" in d and [y["year"] for y in d["yearly"]] == [2024, 2025, 2026]
+    body = json.dumps({k: v for k, v in d.items() if k != "association_only"}).lower()
+    assert "target" not in body and "forecast" not in body
+
+
+def test_sensitivity_monthly_cpi_is_stale_weekly():
+    if store.tcmb().empty:
+        pytest.skip("no TCMB data")
+    r = analyze_macro_sensitivity(ticker="EREGL", factor="cpi_yoy", start="2024-01-01", as_of="2026-09-10")
+    assert "STALE_FACTOR" in {w["code"] for w in r["warnings"]}
+
+
+def test_sensitivity_policy_rate_missing_file(monkeypatch):
+    monkeypatch.setattr(store, "_tcmb", lambda: store.empty_tcmb())
+    assert analyze_macro_sensitivity(ticker="EREGL", factor="policy_rate")["error"]["code"] == "SOURCE_NOT_AVAILABLE"
+
+
+def test_sensitivity_causal(truncate_store):
+    assert_causal(analyze_macro_sensitivity, "2026-09-10", truncate_store, ticker="EREGL", factor="usdtry", start="2024-01-01")
