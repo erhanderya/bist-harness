@@ -48,6 +48,21 @@ Saf Python fonksiyonları, birim testli, tekrarlanabilir:
 - [x] **Araç şemaları donduruldu** → `mcp/tool_schemas.json` (v1.0, 16 araç, tam ~4.9k token / kompakt ~1.9k token). Değişiklik testle yakalanır (`tests/test_schema_freeze.py`); değişirse eğitim verisi geçersiz olur
 - **Çıktı:** 16 araç, 57 test yeşil, şema sürüm 1.0 ✅ (Faz 2 tamam)
 
+## Faz 2b — Araç şeması v1.1 (hocanın örnek soruları) ✅ 2026-11-21
+Gerekçe: hocanın 5 örnek sorusu (`docs/sample_test_questions.txt`) tarih aralığı boyunca olay bazlı istatistik istiyor. v1.0 bunu karşılamıyordu.
+Tasarım: `docs/superpowers/specs/2026-11-19-tool-schema-v1.1-design.md`; plan: `docs/superpowers/plans/2026-11-20-tool-schema-v1.1.md`.
+- [x] Ortak kurallar (`tools/common.py`): `start`/`end` (as_of'a kırpılır, `END_CLIPPED_TO_AS_OF`); tamamlanmamış ileri pencere hariç tutulur ve sayılır (`INCOMPLETE_FORWARD_WINDOW`); n<10 → `SMALL_SAMPLE`
+- [x] `rank_sector_relative_strength`: `tickers` ile özel grup ve `lag_gap` alanı (S1)
+- [x] YENİ `test_catch_up_history`: benzer gerilemeler 5/10/20 günde daraldı mı/kapandı mı, yanlış pozitif oranı, sektör gücüne göre kırılım (S1)
+- [x] `test_weekday_pattern`: `weekday_sequence` deseni (örn. Pzt–Çar düşüş → Per–Cum), maliyet sonrası net getiri, `oos_start` ile tam IS/OOS (S2)
+- [x] `detect_reversal_events`: `bollinger_lower/upper_touch`, `start`/`end`, sabit listeden `condition_sets`, olay listesi (S3)
+- [x] YENİ `analyze_disclosure_reactions`: KAP yayın tarihine göre her çeyrek, metrik değişimi, 1/5/20 gün XU100'e ve sektöre göre anormal getiri, `complete` bayrağı (S4)
+- [x] TCMB verisi: `python -m bist.fetch_evds` → `data/processed/macro_tcmb.parquet` (USD/TRY `TP.DK.USD.A.YTL`, politika faizi vekili `TP.APIFON4`, TÜFE yıllık `TP.TUKFIY2025.GENEL` formulas=3; TÜFE yayın tarihi = sonraki ayın 3. iş günü varsayımı). `get_macro_context`: `start`/`end`/`series` (S5)
+- [x] YENİ `analyze_macro_sensitivity`: hisse ↔ makro faktör korelasyon/beta, faktör yükselir/düşerken getiri, yıllık kararlılık, XU100 kıyası; tahmin yok (S5)
+- [x] Harness: yeni araçlar durumlarına bağlandı; kanıt cümleleri (`catchup_history`, `disclosure`, `macro_sensitivity`, `reversal_condition`, `data_gap`); `POTENTIAL_CATCH_UP_CANDIDATE` için `test_catch_up_history` şartı (10 günde n≥10 ve daralma >%50); `reference.plan` tarih aralığı/peers/desen/koşul/makro faktör alır
+- [x] Kabul: `tests/test_sample_questions.py` (5 soru, analiz tarihi 2026-09-10, hiçbir çıktı tarihi sonrasını göstermez) ve `tests/test_harness_v11.py` (referans ajan 5 soruda doğrulayıcıdan geçer)
+- **Çıktı:** şema **v1.1, 19 araç** (tam ~7.0k token / kompakt ~2.6k token; model her durumda yalnız o durumun araçlarını görür), 136 test yeşil ✅
+
 ## Faz 3 — 4 araştırma senaryosu + raporlar (≈ 3–4 gün, Faz 2 ile paralel yürür)
 - [x] S1 Sektör laggard/catch-up (5/10/20 gün, yanlış pozitifler)
 - [x] S2 Haftanın günü/çok günlü (OOS, multiple-testing)
