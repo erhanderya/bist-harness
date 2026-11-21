@@ -113,7 +113,7 @@ class DetectReversalParams(BaseModel):
     ticker: str = Field(description="BIST ticker, e.g. THYAO")
     as_of: date | None = Field(default=None, description="Analysis date; nothing after it is used.")
     direction: Literal["bullish", "bearish", "both"] = Field(default="bullish", description="Which kind of reversal events to detect.")
-    event_types: list[str] | None = Field(default=None, description=f"Subset of event types; default all for the direction. Valid: {', '.join(EVENT_TYPES)}")
+    event_types: list[str] | None = Field(default=None, description=f"Subset of event types; default all for the direction except bollinger_lower_touch/bollinger_upper_touch, which are used only when named. Valid: {', '.join(EVENT_TYPES)}")
     lookback_days: int = Field(default=1260, ge=60, le=3000, description="Trading days of history used for the strength statistics (~5 years default).")
     recent_days: int = Field(default=10, ge=1, le=60, description="Events within this many trading days of as_of are listed as 'recent'.")
     cooldown_days: int = Field(default=5, ge=0, le=30, description="Same-type events within this many bars of a previous one are dropped.")

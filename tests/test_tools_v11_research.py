@@ -85,3 +85,34 @@ def test_weekday_v10_unchanged():
 def test_weekday_sequence_causal(truncate_store):
     assert_causal(test_weekday_pattern, "2026-09-10", truncate_store, ticker="THYAO", pattern="weekday_sequence",
                   down_days=["MON", "TUE", "WED"], up_days=["THU", "FRI"], start="2024-01-01", oos_start="2026-01-01")
+
+
+# ------------------------------------------------------------- final-review fixes
+def test_weekday_pattern_inverted_range_is_error_envelope():
+    for kw in ({"pattern": "weekday_return", "weekday": "MON"},
+               {"pattern": "weekday_sequence", "down_days": ["MON", "TUE", "WED"], "up_days": ["THU", "FRI"]}):
+        r = test_weekday_pattern(ticker="THYAO", start="2026-08-01", end="2026-07-01", as_of="2026-09-10", **kw)
+        assert r["status"] == "ERROR" and r["error"]["code"] == "INVALID_DATE_RANGE", kw
+        r = test_weekday_pattern(ticker="THYAO", start="2026-09-20", as_of="2026-09-10", **kw)
+        assert r["error"]["code"] == "INVALID_DATE_RANGE", kw
+
+
+def test_weekday_sequence_counts_incomplete_current_week():
+    idx = pd.bdate_range("2024-01-01", "2024-03-27")             # ends on a Wednesday
+    r = pd.Series(0.01, index=idx)
+    r[idx.dayofweek <= 2] = -0.01
+    close = (1 + r).cumprod() * 100
+    d = sequence_stats(close, ["MON", "TUE", "WED"], ["THU", "FRI"], idx[1], idx[-1], 1, 30)
+    assert d["n_excluded_incomplete"] == 1                       # last week: down days seen, up days after end
+    assert d["n_weeks_skipped_missing_days"] == 1                # first week: MON has no prior close
+
+
+def test_event_types_description_mentions_touch_default():
+    from bist.tools.events import DetectReversalParams
+    assert "_touch" in DetectReversalParams.model_fields["event_types"].description.split("Valid:")[0]
+
+
+def test_s3_scenario_uses_v10_event_set():
+    import inspect
+    from bist import scenarios
+    assert "V10_TYPES" in inspect.getsource(scenarios.s3_reversals)

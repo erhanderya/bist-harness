@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from scipy import stats
 
 from . import store
+from .common import resolve_range
 from .envelope import ToolError, tool, warn
 
 MIN_PEERS = 3
@@ -197,19 +198,24 @@ def _seq_summary(out: pd.Series, cond: pd.Series, full: pd.Series, n_tests: int,
             "regime_stable": bool(len(yrs) >= 3 and yrs_same / len(yrs) >= 0.6)}
 
 
-def _weeks(close: pd.Series, down: list[str], up: list[str], start, end) -> tuple[pd.Series, pd.Series, pd.Series]:
-    """Per complete calendar week (all down/up days traded): up_days cumulative return, condition mask, all-up mask."""
+def _weeks(close: pd.Series, down: list[str], up: list[str], start, end) -> tuple[pd.Series, pd.Series, pd.Series, int, int]:
+    """Per complete calendar week (all down/up days traded): up_days cumulative return, condition mask, all-up mask; plus the number
+    of weeks whose up days fall after `end` (incomplete forward window) and of weeks skipped for missing trading days (holidays)."""
     df = pd.DataFrame({"ret": close.pct_change(), "dow": close.index.dayofweek}).loc[start:end]
     wk = df.index.to_period("W-SUN")
     pv = df.assign(wk=wk).pivot_table(index="wk", columns="dow", values="ret", aggfunc="first").reindex(columns=range(5))
     last_day = pd.Series(df.index, index=wk).groupby(level=0).max()
     dcols, ucols = [WEEKDAYS[d] for d in down], [WEEKDAYS[d] for d in up]
-    pv = pv[pv[dcols + ucols].notna().all(axis=1)]
+    complete = pv[dcols + ucols].notna().all(axis=1)
+    cut_off = pd.Series([pd.Period(x, "W-SUN").end_time.normalize() > pd.Timestamp(end) for x in pv.index], index=pv.index)
+    incomplete = ~complete & pv[dcols].notna().all(axis=1) & cut_off
+    n_incomplete, n_skipped = int(incomplete.sum()), int((~complete & ~incomplete).sum())
+    pv = pv[complete]
     idx = pd.DatetimeIndex(last_day.loc[pv.index].to_numpy())
     cond = pd.Series((pv[dcols] < 0).all(axis=1).to_numpy(), index=idx)
     out = pd.Series(((1 + pv[ucols]).prod(axis=1) - 1).to_numpy(), index=idx)
     full = pd.Series((pv[ucols] > 0).all(axis=1).to_numpy(), index=idx)
-    return out, cond, full
+    return out, cond, full, n_incomplete, n_skipped
 
 
 def _significance(d: dict) -> None:
@@ -220,8 +226,9 @@ def _significance(d: dict) -> None:
 def sequence_stats(close: pd.Series, down: list[str], up: list[str], start: pd.Timestamp, end: pd.Timestamp, n_tests: int,
                    cost_bps: float) -> dict:
     """Calendar-week sequence pattern. Weeks missing any down/up trading day are skipped (holidays)."""
-    out, cond, full = _weeks(close, down, up, start, end)
+    out, cond, full, n_inc, n_skip = _weeks(close, down, up, start, end)
     d = _seq_summary(out, cond, full, n_tests, cost_bps)
+    d["n_excluded_incomplete"], d["n_weeks_skipped_missing_days"] = n_inc, n_skip
     ins, oos = {}, {}
     if len(out):
         cut = out.index[int(len(out) * 0.7)]
@@ -276,9 +283,8 @@ def test_weekday_pattern(p: WeekdayPatternParams):
     bars = store.stock_bars(t, as_of)
     w += store.staleness_warnings(bars, as_of, t)
     end = min(pd.Timestamp(p.end), as_of) if p.end else as_of
-    if p.end and pd.Timestamp(p.end) > as_of:
-        w.append(warn("END_CLIPPED_TO_AS_OF", f"end {p.end} is after the analysis date; clipped to {as_of.date()}"))
-    start = pd.Timestamp(p.start) if p.start else end - pd.DateOffset(years=5)
+    start, end, wr = resolve_range(p.start, p.end, as_of, end - pd.DateOffset(years=5))  # default start: 5 years before the clipped end
+    w += wr
     oos = pd.Timestamp(p.oos_start) if p.oos_start else None
     if oos is not None and not (start < oos <= end):
         raise ToolError("INVALID_DATE_RANGE", f"oos_start {oos.date()} must lie inside ({start.date()}, {end.date()}]")
@@ -294,6 +300,8 @@ def test_weekday_pattern(p: WeekdayPatternParams):
                        and ref["mean_diff_vs_rest"] is not None and np.sign(ref["mean_diff_vs_rest"]) == np.sign(d["mean_diff_vs_rest"]))
     if d["occurrences"] < 10:
         w.append(warn("SMALL_SAMPLE", f"{t}: only {d['occurrences']} occurrences; no reliable conclusion possible"))
+    if d.get("n_excluded_incomplete"):
+        w.append(warn("INCOMPLETE_FORWARD_WINDOW", f"{t}: {d['n_excluded_incomplete']} week(s) whose up_days fall after the period end were excluded"))
     if market_wide:
         w.append(warn("MARKET_WIDE_EFFECT", "The same pattern is also significant in XU100 with the same sign: it is a market-wide effect, not specific to this stock (and it repeats across all stocks, so it is not independent evidence)."))
     if not d["significant_and_stable"] and d["occurrences"] >= 10:

@@ -344,7 +344,7 @@
        }
       ],
       "default": null,
-      "description": "Subset of event types; default all for the direction. Valid: rsi_oversold_exit, bollinger_lower_reclaim, supertrend_flip_up, kama_cross_up, macd_cross_up, ichimoku_tk_cross_up, ichimoku_cloud_breakout_up, rsi_overbought_exit, bollinger_upper_rejection, supertrend_flip_down, kama_cross_down, macd_cross_down, ichimoku_tk_cross_down, ichimoku_cloud_breakdown, bollinger_lower_touch, bollinger_upper_touch"
+      "description": "Subset of event types; default all for the direction except bollinger_lower_touch/bollinger_upper_touch, which are used only when named. Valid: rsi_oversold_exit, bollinger_lower_reclaim, supertrend_flip_up, kama_cross_up, macd_cross_up, ichimoku_tk_cross_up, ichimoku_cloud_breakout_up, rsi_overbought_exit, bollinger_upper_rejection, supertrend_flip_down, kama_cross_down, macd_cross_down, ichimoku_tk_cross_down, ichimoku_cloud_breakdown, bollinger_lower_touch, bollinger_upper_touch"
      },
      "lookback_days": {
       "default": 1260,
@@ -2270,5 +2270,5 @@
    }
   }
  },
- "schema_hash": "88317a2b004c3ac0"
+ "schema_hash": "dd5d68940df2c6a6"
 }
