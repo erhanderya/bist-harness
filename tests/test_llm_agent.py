@@ -152,3 +152,18 @@ def test_caller_focus_and_as_of_override_model(db):
 def test_invalid_model_focus_falls_back_to_general(db):
     h = LLMAgent(PlanningModel(sel={"focus": "moon"}), db=db).run("AKBNK?", human=("APPROVE", "ok"))
     assert h.focus == "general"
+
+
+def test_request_context_is_compact(db):
+    """Earlier states' tool results are sent as their first line only; the final turn sees only the setup + committed evidence."""
+    m = PlanningModel()
+    a = LLMAgent(m, db=db)
+    a.run("AKBNK bilanço sonrası?", focus="fundamental_reaction", human=("APPROVE", "ok"))
+    full = sum(len(x["content"]) for x in a.messages)
+    for req in m.requests:
+        _check_pairing(req)
+        last_prompt = max(i for i, x in enumerate(req) if x["role"] == "user")
+        assert all(len(x["content"]) <= 240 for x in req[:last_prompt] if x["role"] == "tool")
+    final = [r for r in m.requests if "GENERATE_EXPLANATION" in r[-1]["content"]][0]
+    assert not any(x["role"] == "tool" and x["tool_name"] != "select_universe" for x in final)
+    assert max(sum(len(x["content"]) for x in r) for r in m.requests) < full

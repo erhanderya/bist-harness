@@ -88,3 +88,27 @@ def test_q2_is_and_oos_reach_evidence(db):
     h = reference.run(q, tk, focus, as_of=AS_OF, db=db, **kw)
     st = " ".join(it["statement"] for it in h.evidence["observed"] if it["kind"] == "pattern")
     assert "in-sample" in st and "out-of-sample" in st and "costs" in st
+
+
+def _q():
+    return env("check_data_quality", {"verdict": "PASS", "issues": []})
+
+
+def _err(tool, code):
+    return {"tool": tool, "envelope": {"status": "ERROR", "data": None, "warnings": [], "error": {"code": code, "message": code}}}
+
+
+def test_recovered_model_input_error_does_not_trip_gate():
+    calls = [_q(), _err("calculate_indicators", "INVALID_PARAMS"), env("calculate_indicators", {"x": 1})]
+    g = policy.risk_gate(calls, require_backtest=False)
+    assert g["verdict"] == "PASS" and "TOOL_ERROR" not in g["reasons"]
+
+
+def test_unrecovered_model_input_error_is_only_a_warning():
+    g = policy.risk_gate([_q(), _err("calculate_indicators", "INVALID_PARAMS")], require_backtest=False)
+    assert g["verdict"] == "PASS_WITH_WARNINGS" and "TOOL_CALL_INVALID" in g["reasons"]
+
+
+def test_data_error_still_investigates():
+    g = policy.risk_gate([_q(), _err("get_fundamental_metrics", "NO_FUNDAMENTALS")], require_backtest=False)
+    assert g["verdict"] == "INVESTIGATE" and "TOOL_ERROR" in g["reasons"]

@@ -64,6 +64,11 @@ def backtest_view(calls: list[dict]) -> dict | None:
             "excess_vs_xu100": s.get("mean_excess_vs_xu100"), "max_drawdown": p.get("max_drawdown"), "sharpe": p.get("sharpe_annualized_rf0")}
 
 
+# Errors caused by the caller's parameters (not by the data): a later successful call of the same tool recovers them.
+MODEL_INPUT_ERRORS = {"INVALID_PARAMS", "MISSING_PARAM", "INVALID_DATE_RANGE", "INVALID_PERIOD", "UNKNOWN_METRIC", "UNKNOWN_EVENT_TYPE",
+                      "UNKNOWN_SECTOR", "UNKNOWN_TICKER", "TOOL_NOT_ALLOWED_IN_STATE", "TICKER_NOT_IN_SELECTION", "AS_OF_AFTER_ANALYSIS_DATE"}
+
+
 def risk_gate(calls: list[dict], require_backtest: bool = True) -> dict:
     q = quality_verdict(calls)
     reasons: list[str] = []
@@ -92,8 +97,16 @@ def risk_gate(calls: list[dict], require_backtest: bool = True) -> dict:
                     bump("PASS_WITH_WARNINGS"); reasons.append(f)
             if bt.get("max_drawdown") is not None and bt["max_drawdown"] < -MAX_DRAWDOWN_WARN:
                 bump("PASS_WITH_WARNINGS"); reasons.append(f"HIGH_DRAWDOWN({bt['max_drawdown'] * 100:.0f}%)")
-        if any(c["envelope"]["status"] == "ERROR" and c["tool"] not in ("get_news_events", "get_speech_features", "run_backtest") for c in calls):
-            bump("INVESTIGATE"); reasons.append("TOOL_ERROR")
+        succeeded = {c["tool"] for c in calls if _ok(c["envelope"])}
+        for c in calls:
+            env = c["envelope"]
+            if env["status"] != "ERROR" or c["tool"] in ("get_news_events", "get_speech_features", "run_backtest"):
+                continue
+            if (env.get("error") or {}).get("code") in MODEL_INPUT_ERRORS:
+                if c["tool"] not in succeeded:   # the agent never got a valid call through: an analysis step is missing, data is fine
+                    bump("PASS_WITH_WARNINGS"); reasons.append("TOOL_CALL_INVALID")
+            else:
+                bump("INVESTIGATE"); reasons.append("TOOL_ERROR")
     return {"verdict": verdict, "reasons": sorted(set(reasons)), "quality": q, "backtest": bt}
 
 

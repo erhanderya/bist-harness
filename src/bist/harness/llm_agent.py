@@ -26,6 +26,7 @@ from .logdb import DecisionLog
 from .machine import Harness, HarnessConfig
 from .states import ALLOWED_TOOLS
 
+CONTEXT_TOOL_LINE = 200  # chars kept of an earlier state's tool result / assistant text in the model context
 FOCI = ["sector_catchup", "technical_reversal", "fundamental_reaction", "calendar_pattern", "general"]
 
 SYSTEM = """You are the analysis agent of a BIST (Borsa Istanbul) educational analytics harness. You work in states; in each state you may call only the tools shown.
@@ -100,6 +101,9 @@ class LLMAgent:
         self.trace: list[dict] = []
         self.messages: list[dict] = []
         self.selection: dict = {}
+        self._base_end: int | None = None    # end of system + question + selection + setup (always sent in full)
+        self._seg_start: int | None = None   # first message of the current state (sent in full)
+        self._final_start: int | None = None # first message of GENERATE_EXPLANATION (only base + this is sent)
 
     # ---------------------------------------------------------------- conversation helpers
     def _args(self, tc) -> tuple[str, dict]:
@@ -107,9 +111,29 @@ class LLMAgent:
         a = f.get("arguments") or {}
         return f["name"], (json.loads(a) if isinstance(a, str) else a)
 
+    def context(self) -> list[dict]:
+        """Messages sent to the model for the next turn (deterministic, also used for training traces):
+        base in full; earlier states compressed (tool results -> their first line = status + warnings); current state in full.
+        In GENERATE_EXPLANATION only the base + the explanation turn (the committed evidence carries the facts)."""
+        msgs = self.messages
+        if self._base_end is None:
+            return list(msgs)
+        base = msgs[:self._base_end]
+        if self._final_start is not None:
+            return base + msgs[self._final_start:]
+        seg = self._seg_start or self._base_end
+        mid = []
+        for x in msgs[self._base_end:seg]:
+            if x["role"] == "tool":
+                x = {**x, "content": x["content"].splitlines()[0][:CONTEXT_TOOL_LINE] if x["content"] else ""}
+            elif x["role"] == "assistant" and len(x["content"]) > CONTEXT_TOOL_LINE:
+                x = {**x, "content": x["content"][:CONTEXT_TOOL_LINE]}
+            mid.append(x)
+        return base + mid + msgs[seg:]
+
     def _ask(self, tools: list[dict] | None = None, json_format: bool = False) -> dict:
-        """One model turn on the full transcript; the reply is appended as an assistant message."""
-        m = self.chat(self.messages, tools=tools, json_format=json_format) or {}
+        """One model turn on the compact context; the reply is appended to the full transcript as an assistant message."""
+        m = self.chat(self.context(), tools=tools, json_format=json_format) or {}
         calls = m.get("tool_calls") or []
         msg = {"role": "assistant", "content": m.get("content") or ""}
         if calls:
@@ -160,6 +184,7 @@ class LLMAgent:
     # ---------------------------------------------------------------- analysis states
     def _work_state(self, h: Harness) -> None:
         tdefs = tool_defs(ALLOWED_TOOLS[h.state])
+        self._seg_start = len(self.messages)
         self._user(f"State {h.state}. Allowed tools: {', '.join(ALLOWED_TOOLS[h.state])}. Tickers: {', '.join(h.tickers)}. "
                    "Call the tool(s) needed for the question (skip the state if none is needed), then next_state.")
         for _ in range(self.max_steps):
@@ -195,6 +220,7 @@ class LLMAgent:
 
     # ---------------------------------------------------------------- run
     def run(self, question: str, as_of: str | None = None, focus: str | None = None, human: tuple[str, str] | None = None) -> Harness:
+        self._base_end = self._seg_start = self._final_start = None
         self.messages = [{"role": "system", "content": SYSTEM},
                          {"role": "user", "content": f"Question: {question}" + (f"\nAnalysis date: {as_of}" if as_of else "")}]
         sel = self._select()
@@ -210,6 +236,7 @@ class LLMAgent:
             pe = h.as_of
         period = f"; data period {ps or 'not stated'} to {pe or h.as_of} (pass start/end to tools that accept them)" if (ps or pe) else ""
         self._user(f"Analysis set up: tickers {', '.join(h.tickers)}; focus {h.focus}; analysis date {h.as_of} (no data after it){period}.")
+        self._base_end = len(self.messages)
         while h.state != "RISK_GATE":
             if h.state not in ("SELECT_UNIVERSE",) and ALLOWED_TOOLS[h.state] and h.state != "BUILD_EVIDENCE" and not (h.state == "RUN_BACKTEST" and h.blocked()):
                 self._work_state(h)
@@ -223,6 +250,7 @@ class LLMAgent:
         ctx = ("State GENERATE_EXPLANATION. Committed evidence (cite as [E#], quote only these numbers):\n" + "\n".join(f"[{i}] {obs[i]['statement']}" for i in ev["committed_ids"])
                + f"\nRisk gate: {g['verdict']} {g['reasons']}\nPermitted actions: {g['permitted_actions']}\n"
                + 'Return JSON: {"action": <one permitted action>, "explanation": <short text citing [E#] ids; end with: ' + policy.DISCLAIMER + '>}')
+        self._final_start = len(self.messages)
         self._user(ctx)
         for attempt in range(self.max_retries + 1):
             m = self._ask(json_format=True)
