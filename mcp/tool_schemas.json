@@ -444,8 +444,33 @@
    "input_schema": {
     "properties": {
      "sector": {
-      "description": "Peer group name (e.g. Financials, Retail_Consumer, Energy_Utilities, Metals_Mining, Chemicals, Auto_Durables, Construction_Materials, Transport, Telecom, Healthcare, Defense_Tech) or a ticker (its group is used).",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Peer group name (e.g. Financials, Retail_Consumer, Energy_Utilities, Metals_Mining, Chemicals, Auto_Durables, Construction_Materials, Transport, Telecom, Healthcare, Defense_Tech) or a ticker (its group is used)."
+     },
+     "tickers": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 30,
+        "minItems": 1,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Explicit peer list (e.g. the stocks named in the question); overrides `sector`."
      },
      "horizon_days": {
       "default": 10,
@@ -468,9 +493,6 @@
       "description": "Analysis date; nothing after it is used."
      }
     },
-    "required": [
-     "sector"
-    ],
     "type": "object"
    }
   },
@@ -1297,7 +1319,11 @@
    "params": {
     "sector": {
      "type": "string",
-     "required": true
+     "required": false
+    },
+    "tickers": {
+     "type": "list[string]",
+     "required": false
     },
     "horizon_days": {
      "type": "integer",
@@ -1610,5 +1636,5 @@
    }
   }
  },
- "schema_hash": "9f9ab40fd9c845f0"
+ "schema_hash": "ab6afba17232107f"
 }

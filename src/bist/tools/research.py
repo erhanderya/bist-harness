@@ -18,9 +18,25 @@ WEEKDAYS = {"MON": 0, "TUE": 1, "WED": 2, "THU": 3, "FRI": 4}
 
 # ------------------------------------------------------------------ sector relative strength
 class RankSectorParams(BaseModel):
-    sector: str = Field(description="Peer group name (e.g. Financials, Retail_Consumer, Energy_Utilities, Metals_Mining, Chemicals, Auto_Durables, Construction_Materials, Transport, Telecom, Healthcare, Defense_Tech) or a ticker (its group is used).")
+    sector: str | None = Field(default=None, description="Peer group name (e.g. Financials, Retail_Consumer, Energy_Utilities, Metals_Mining, Chemicals, Auto_Durables, Construction_Materials, Transport, Telecom, Healthcare, Defense_Tech) or a ticker (its group is used).")
+    tickers: list[str] | None = Field(default=None, min_length=1, max_length=30, description="Explicit peer list (e.g. the stocks named in the question); overrides `sector`.")
     horizon_days: int = Field(default=10, ge=1, le=60, description="Return horizon in trading days (typically 5, 10 or 20).")
     as_of: date | None = Field(default=None, description="Analysis date; nothing after it is used.")
+
+
+def _group_members(sector: str | None, tickers: list[str] | None) -> tuple[str, list[str], bool]:
+    """(group name, members, custom?). An explicit ticker list wins over `sector`; duplicates are dropped, unknown tickers raise."""
+    if tickers:
+        out = []
+        for raw in tickers:
+            t, _ = store.resolve_ticker(raw)
+            if t not in out:
+                out.append(t)
+        return "custom", out, True
+    if not sector:
+        raise ToolError("MISSING_PARAM", "give `sector` (peer group or ticker) or an explicit `tickers` list")
+    g, members = _group_of(sector)
+    return g, members, False
 
 
 def _group_of(sector: str) -> tuple[str, list[str]]:
@@ -39,7 +55,7 @@ def _group_of(sector: str) -> tuple[str, list[str]]:
 @tool("rank_sector_relative_strength", RankSectorParams,
       "Peer-group relative strength: each member's horizon return vs. the sector median and XU100, lag score and rank (1 = most lagging).")
 def rank_sector_relative_strength(p: RankSectorParams):
-    group, members = _group_of(p.sector)
+    group, members, custom = _group_members(p.sector, p.tickers)
     as_of, w = store.resolve_as_of(p.as_of)
     h = p.horizon_days
     rets, last = {}, {}
@@ -54,21 +70,23 @@ def rank_sector_relative_strength(p: RankSectorParams):
     if len(rets) < MIN_PEERS:
         w.append(warn("PEER_GROUP_TOO_SMALL", f"{group} has {len(rets)} usable member(s); fewer than {MIN_PEERS}, so sector-relative ranking is not meaningful"))
         data = {"sector": group, "horizon_days": h, "members": [{"ticker": t, "return": r} for t, r in rets.items()],
-                "xu100_return": xu, "ranking_valid": False}
+                "xu100_return": xu, "ranking_valid": False, "custom_group": custom}
         return data, w, {"as_of": as_of, "sources": ["prices_clean.parquet", "universe.csv (peer_group is our coarse mapping)"]}
     r = pd.Series(rets)
     med = float(r.median())
     sd = float(r.std(ddof=0)) or np.nan
     rows = []
     for t, v in r.items():
-        rows.append({"ticker": t, "return": v, "excess_vs_sector_median": v - med, "excess_vs_xu100": v - xu,
+        rows.append({"ticker": t, "return": v, "excess_vs_sector_median": v - med, "lag_gap": v - med, "excess_vs_xu100": v - xu,
                      "lag_score": (med - v) / sd if sd == sd else None})
     rows.sort(key=lambda x: -(x["lag_score"] if x["lag_score"] is not None else -9))
     for i, x in enumerate(rows, 1):
         x["lag_rank"] = i
     data = {"sector": group, "horizon_days": h, "n_members": len(rows), "sector_median_return": med, "xu100_return": xu,
             "sector_vs_xu100": med - xu, "sector_strong": bool(med > xu and med > 0), "ranking_valid": True,
-            "dispersion": sd, "ranking_lagging_first": rows}
+            "dispersion": sd, "ranking_lagging_first": rows, "custom_group": custom}
+    if custom:
+        w.append(warn("CUSTOM_PEER_GROUP", f"peer group is the explicit list {', '.join(members)}, not a predefined sector"))
     if len(rows) < 4:
         w.append(warn("SMALL_PEER_GROUP", f"{group} has only {len(rows)} members; median/dispersion are coarse"))
     return data, w, {"as_of": as_of, "last_bar_date": max(last.values()), "sources": ["prices_clean.parquet", "index_clean.parquet", "universe.csv (peer_group is our coarse mapping)"]}
