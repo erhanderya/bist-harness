@@ -1,6 +1,6 @@
 """Faz 5 generator: template questions -> reference trace replayed through LLMAgent -> per-turn SFT rows.
 
-    python -m bist.finetune.generate --n 300 --seed 0 [--out finetune/data] [--check-only]
+    python -m bist.finetune.generate --n 300 --seed 0 [--out finetune/data] [--check-only] [--no-candidates]
 
 Resumable: each question's rows are cached in <out>/traces/<id>.json (skipped questions too, with the reason).
 Writes questions.jsonl, train.jsonl, val.jsonl, test.jsonl and stats.json. `validate_dataset` re-checks the written files.
@@ -22,6 +22,7 @@ from ..harness.logdb import DecisionLog
 from ..tools import session, store
 from .export import MAX_TOKENS, example_rows, question_record, token_len, tokenizer
 from .scripted import replay
+from .candidates import candidate_questions
 from .templates import TEST_TICKERS, build_questions
 
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -63,12 +64,13 @@ def _write_jsonl(path: Path, rows) -> None:
     path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
 
 
-def main(n: int = 300, seed: int = 0, out_dir: Path = Path("finetune/data"), error_share: float = 0.10, db_path: Path | None = None) -> dict:
+def main(n: int = 300, seed: int = 0, out_dir: Path = Path("finetune/data"), error_share: float = 0.10, db_path: Path | None = None,
+         candidates: bool = False) -> dict:
     out_dir = Path(out_dir)
     cache = out_dir / "traces"
     cache.mkdir(parents=True, exist_ok=True)
     db = DecisionLog(db_path or Path(tempfile.gettempdir()) / "bist_finetune_gen.sqlite")
-    qs = build_questions(n, seed)
+    qs = build_questions(n, seed) + (candidate_questions() if candidates else [])   # c* ids: candidate-label supplement
     traces = {}
     for q in qs:
         f = cache / f"{q.id}.json"
@@ -97,6 +99,7 @@ def main(n: int = 300, seed: int = 0, out_dir: Path = Path("finetune/data"), err
              "rows_by_split": {s: len(by_split[s]) for s in SPLITS},
              "questions_by_split": dict(Counter(q.split for q in ok)), "by_scenario": dict(Counter(q.scenario for q in ok)),
              "by_lang": dict(Counter(q.lang for q in ok)), "by_negative": dict(Counter(q.negative or "none" for q in ok)),
+             "candidate_questions": sum(q.id.startswith("c") for q in ok),
              "by_ref_action": dict(Counter(traces[q.id]["ref_action"] for q in ok)),
              "by_inject": dict(Counter(traces[q.id].get("inject") or "none" for q in ok)),
              "rows_by_kind": dict(Counter(r["kind"] for r in rows)),
@@ -150,7 +153,7 @@ def validate_dataset(out_dir: Path, full_mix: bool = True) -> list[str]:
             if q["text"] in originals:
                 probs.append(f"{q['id']}: original sample question in {q['split']}")
     if full_mix:
-        ok = [q for q in qs.values() if q.get("ok", True)]
+        ok = [q for q in qs.values() if q.get("ok", True) and not q["id"].startswith("c")]   # the targeted supplement is outside the mix
         neg = sum(q["negative"] is not None for q in ok) / max(1, len(ok))
         if not 0.20 <= neg <= 0.25:
             probs.append(f"negative share {neg:.3f} outside 0.20-0.25")
@@ -169,9 +172,10 @@ def _cli() -> None:
     ap.add_argument("--out", type=Path, default=Path("finetune/data"))
     ap.add_argument("--error-share", type=float, default=0.10)
     ap.add_argument("--check-only", action="store_true")
+    ap.add_argument("--no-candidates", action="store_true", help="skip the candidate-label supplement (finetune/candidate_seeds.json)")
     a = ap.parse_args()
     if not a.check_only:
-        st = main(a.n, a.seed, a.out, a.error_share)
+        st = main(a.n, a.seed, a.out, a.error_share, candidates=not a.no_candidates)
         print(json.dumps({k: v for k, v in st.items() if k != "skipped"}, ensure_ascii=False), f"skipped={len(st['skipped'])}")
     p = validate_dataset(a.out)
     print("OK" if not p else "PROBLEMS:\n" + "\n".join(p[:50]))
