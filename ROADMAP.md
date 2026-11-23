@@ -29,7 +29,7 @@ Faz 2'de DONDURULMADAN veri üretimine geçilmez.
 - [x] OHLCV (yfinance) 30 hisse + XU100 → Parquet (2015→). `clean_prices.py`: CCOLA split düzeltmesi, yarım bar atma, hacim bayrağı. AÇIK: SASA'da 202 sıfır-hacim günü, ECILC 2020-03-12 +%31.9 doğrulanmadı
 - [x] Temel veri (Fintables YOK → KAP + İş Yatırım + resmi API): yayın zamanları, rakamlar, PIT takvim, çeyreklik oranlar (`fundamental_metrics.py`), resmi API ile doğrulama (`validate_fundamentals.py`). Denetim: docs/data_layer_audit.md. KRİTİK: İş Yatırım değerleri TMS29 döneminde (FY2022→) ilk yayın değeri değil → nominal dönem ana analiz, TMS29 ayrı rejim
 - [x] Makro (piyasa tabanlı, anahtarsız): USD/TRY, EUR/TRY, DXY, VIX, ABD 10Y, Brent, altın, S&P500 (Yahoo) + Fed etkin faiz/hedef aralığı (NY Fed API; FRED bu ağdan erişilemiyor) → `data/processed/macro_market_daily.parquet` (`bist.fetch_macro`, 11 seri, 2015→). Kural: özellikler D-1 veya öncesi değerle hesaplanır (global kapanışlar BIST 18:00'den sonra)
-- [ ] Makro (anahtar gerekli): TCMB EVDS politika faizi + TÜFE (kullanıcı `.env`'e `EVDS_API_KEY` ekleyecek), TÜİK yayın takvimi; yayın zaman damgalarıyla
+- [x] Makro (anahtar gerekli; Faz 2b'de yapıldı): TCMB EVDS politika faizi + TÜFE (kullanıcı `.env`'e `EVDS_API_KEY` ekleyecek), TÜİK yayın takvimi; yayın zaman damgalarıyla
 - [ ] Haber/konuşma: küçük, yasal, zaman damgalı örnek set (opsiyonel katman, en sona)
 - [x] `check_data_quality` temeli (bkz. Faz 2)
 - **Çıktı:** `data/processed/*.parquet` + veri sözlüğü taslağı. Sonrasında internet gerekmez.
@@ -80,16 +80,18 @@ Tasarım: `docs/superpowers/specs/2026-11-19-tool-schema-v1.1-design.md`; plan: 
 - [x] v2 (2026-11-21): geçerli konuşma formatı (her araç çağrısından sonra tool mesajı), odak/tarih/dönem seçimi modelde, kompakt bağlam (16k), düzeltilen model girdisi hatası kapıyı düşürmez. **Base model ölçümü:** `docs/eval/baseline_base_model_2026-11-21.md` (5/5 doğru seçim ve doğrulanmış cevap; parametre hataları ve içerik zayıf → Faz 5 hedefleri)
 - **Çıktı:** base model ile uçtan uca çalışan harness (henüz fine-tune yok = deney A/B/C temeli)
 
-## Faz 5 — Eğitim verisi üretimi (≈ 3–4 gün)
-Hedef: **~2.500–4.000 örnek**, otomatik üretim, gerçek araç çıktılarıyla.
-- [ ] Format: `soru → tool_call(JSON) → tool_result → kanıta dayalı açıklama + izinli eylem`
-- [ ] Dağılım: dört zorunlu senaryo dengeli + çoklu araç zincirleri
-- [ ] **Olumsuz/güvenlik örnekleri (~20–25%)**: tavsiye isteyen sorular (reddet), eksik veri → INVESTIGATE,
-      HARD_BLOCK → ANALYSIS_UNSAFE, araç çıktısında olmayan sayıyı sorma (uydurma yok), kalite adımını atlama isteği
-- [ ] Soru çeşitliliği: Türkçe + İngilizce, çok farklı ifade (canlı test önceden bilinmeyen soru!)
-- [ ] Açıklamalar şablon + LLM paraphrase **yerel** modelle (bulut API yasak); sayılar araç çıktısından kopyalanır
-- [ ] Ayrım: train / val / **test = hiç görülmemiş soru şablonu, ticker ve dönem**
-- **Çıktı:** `finetune/data/{train,val,test}.jsonl` + veri hazırlama dokümantasyonu
+## Faz 5 — Eğitim verisi üretimi ✅ 2026-11-23
+Tasarım `docs/superpowers/specs/2026-11-23-faz5-training-data-design.md`, dokümantasyon **`docs/finetune_data.md`**.
+Komut: `python -m bist.finetune.generate --n 300 --seed 0` (deterministik, ~12 dk, önbellekli).
+- [x] Format: referans izi, senaryolu model ile gerçek `LLMAgent` döngüsünde tekrar oynatılır; her asistan turu = bir örnek
+      (girdi = ajanın gönderdiği sıkıştırılmış `context()` + araç tanımları, hedef = tool_call / next_state / final JSON). Qwen/HF mesaj biçimi
+- [x] Dağılım: S1–S5 dengeli (59–62 soru); tur başına araç zincirleri; 18 hata-düzeltme izi (hatalı çağrı → ERROR → düzeltme)
+- [x] Olumsuz/güvenlik örnekleri %22 (tavsiye, veri ötesi tarih → HARD_BLOCK, ileri dönem kırpma, kısa geçmiş, küçük peer grubu, uydurulamayacak sayı, kontrolü atlama)
+- [x] Soru çeşitliliği: TR 149 / EN 151, senaryo×dil başına 12 kalıp, karışık tarih yazımı (yaklaşım A: yalnız şablon, paraphrase yok — kullanıcı kararı)
+- [x] Açıklamalar referans şablonu (`policy.build_explanation`), sayılar araç çıktısından; tümü doğrulayıcıdan geçti
+- [x] Ayrım: test = TCELL/FROTO/ENJSA/PGSUS veya analiz tarihi 2023 H1 veya yalnız-test kalıbı; 5 orijinal soru train/val'de yok
+- [x] Harness: S1'de ana hisse sıralamadan sonra en geride kalana geçer (`harness_notes`), kalite/teknik tüm seçili hisselerde, sinyaller ana hisseye ait çağrılardan; `Harness.history`
+- **Çıktı:** `finetune/data/{train,val,test}.jsonl` = 2.737 / 321 / 553 örnek (300 soru: 229/26/45), token maks 5.540
 
 ## Faz 6 — İnce ayar (≈ 2–3 gün, deneme dahil)
 - **Seçilen model: `Qwen/Qwen3-4B-Instruct-2507`** (karar 2026-11-19, web araştırmasıyla teyitli). Gerekçe: yalnız non-thinking (`<think>` yok),

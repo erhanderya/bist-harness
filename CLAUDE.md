@@ -8,7 +8,7 @@
 - Veri (`data/` gitignore'da, repoda yok): yeniden kurulum sırası `fetch_prices` → `clean_prices` (data/corrections.csv: CCOLA.IS 2024-08-01 katsayı 11) → `fetch_macro` → `fetch_evds` (TCMB; `.env` EVDS_API_KEY) → `fetch_disclosure_times` → `fetch_fundamentals` → `fundamental_metrics` → `fundamental_calendar`. DİKKAT: `fetch_disclosure_times` başarısız pencereyi yamarken `--merge` verilmezse parquet'in üzerine yazar. `kap_harvest_official`/`validate_fundamentals` MKK anahtarı ister, araçlar kullanmaz.
 - Kural: araç şemaları (mcp/tool_schemas.json) Faz 2'de dondurulmadan eğitim verisi üretme.
 - Windows/Git Bash: dosya yolları /c/... ; Python'u `-I` ile değil venv ile çalıştır.
-- Çalıştırma: `cd /c/Projects/econ/bist-harness && PYTHONPATH=src PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -m <modül>`; test: `... -m pytest tests -q` (149 test; örnek soru kabulü: tests/test_sample_questions.py). Uzun Python dosyalarını bash heredoc yerine Write ile yaz.
+- Çalıştırma: `cd /c/Projects/econ/bist-harness && PYTHONPATH=src PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -m <modül>`; test: `... -m pytest tests -q` (184 test; örnek soru kabulü: tests/test_sample_questions.py). Uzun Python dosyalarını bash heredoc yerine Write ile yaz.
 - Araçlar: src/bist/tools/ (envelope.py sözleşme; her araç as_of alır, sonrasını görmez; hatalar status=ERROR zarfı). Şema: mcp/tool_schemas.json DONDURULDU (v1.1, 19 araç; ROADMAP Faz 2b). Ortak tarih aralığı/ileri pencere kuralları: tools/common.py. Hocanın 5 örnek sorusu: docs/sample_test_questions.txt.
 
 ## Harness (Faz 4)
@@ -16,3 +16,7 @@
 - Referans çalıştırma: `reference.run(soru, "THYAO", focus, human=("APPROVE","neden"))` (v1.1 ek argümanlar: `start`, `end`, `peers`, `pattern_kw`, `reversal_kw`, `macro_factor`, örnekler `tests/test_harness_v11.py::SAMPLE_RUNS`); MCP: `python -m bist.harness.mcp_server`.
 - Karar günlüğü yolu `BIST_DECISION_DB` ile değiştirilebilir. Testler: tests/test_harness.py, test_llm_agent.py, test_mcp_server.py.
 - Kural: LLM çıktısı `policy.validate_output`'tan geçmeden kabul edilmez; hiçbir araç emir üretmez.
+
+## Eğitim verisi (Faz 5)
+- Paket: `src/bist/finetune/` — `templates.py` (şablon sorular, bölme), `scripted.py` (ScriptedChat: referans izi LLMAgent içinde), `export.py` (Qwen/HF format, token), `generate.py`.
+- Üretim: `HF_HOME=.cache/hf ... -m bist.finetune.generate --n 300 --seed 0` (`finetune/data/` gitignore'da; önbellek `traces/`); `--check-only` kontroller. Doküman: docs/finetune_data.md.
