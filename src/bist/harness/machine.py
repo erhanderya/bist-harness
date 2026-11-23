@@ -133,11 +133,10 @@ class Harness:
             return
         old = self.tickers[0]
         self.tickers = [lag] + [t for t in self.tickers if t != lag]
+        # a harness annotation, kept apart from the tool's own status/warnings so replay still reproduces the tool result
         w = {"code": "MAIN_TICKER_SET_TO_LAGGARD", "message": f"main ticker set to {lag} (most lagging selected ticker; was {old})"}
         for e in {id(env): env, id(rec["envelope"]): rec["envelope"]}.values():
-            e.setdefault("warnings", []).append(w)
-            if e.get("status") == "OK":
-                e["status"] = "WARN"
+            e.setdefault("harness_notes", []).append(w)
         self.db.exec("UPDATE analyses SET tickers=? WHERE id=?", ",".join(self.tickers), self.id)
 
     def _violation(self, tool, code, msg, params=None) -> dict:

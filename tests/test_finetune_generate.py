@@ -76,3 +76,32 @@ def test_validate_flags_future_date(small, tmp_path):
     r["messages"].insert(-1, {"role": "tool", "name": "x", "content": "x: OK last bar 2099-01-01"})
     (bad / f"{name}.jsonl").write_text("\n".join(json.dumps(x, ensure_ascii=False) for x in rows) + "\n", encoding="utf-8")
     assert any("2099-01-01" in p for p in generate.validate_dataset(bad, full_mix=False))
+
+
+def test_cache_miss_when_question_changes(tmp_path, monkeypatch):
+    generate.main(n=2, seed=3, out_dir=tmp_path, error_share=0.0)
+    seen = []
+    real = generate.replay
+    monkeypatch.setattr(generate, "replay", lambda q, db, **kw: (seen.append(q.id), real(q, db, **kw))[1])
+    generate.main(n=2, seed=4, out_dir=tmp_path, error_share=0.0)     # different seed -> different questions under the same ids
+    assert seen == ["q0001", "q0002"]
+    qs = [json.loads(l) for l in (tmp_path / "questions.jsonl").read_text(encoding="utf-8").splitlines()]
+    rows = _rows(tmp_path, "train") + _rows(tmp_path, "val") + _rows(tmp_path, "test")
+    for q in qs:
+        r = next(r for r in rows if r["question_id"] == q["id"])
+        assert q["text"] in r["messages"][1]["content"]
+
+
+def test_skipped_question_is_retried(tmp_path, monkeypatch):
+    real = generate.replay
+    monkeypatch.setattr(generate, "replay", lambda q, db, **kw: (_ for _ in ()).throw(RuntimeError("transient")) if q.id == "q0001" else real(q, db, **kw))
+    assert generate.main(n=1, seed=5, out_dir=tmp_path, error_share=0.0)["questions_ok"] == 0
+    monkeypatch.setattr(generate, "replay", real)
+    assert generate.main(n=1, seed=5, out_dir=tmp_path, error_share=0.0)["questions_ok"] == 1
+
+
+def test_error_choice_does_not_depend_on_cache():
+    a = [generate.wants_error(0, f"q{i:04d}", 0.3) for i in range(1, 200)]
+    assert a == [generate.wants_error(0, f"q{i:04d}", 0.3) for i in range(1, 200)]
+    assert 0.2 < sum(a) / len(a) < 0.4
+    assert a != [generate.wants_error(1, f"q{i:04d}", 0.3) for i in range(1, 200)]

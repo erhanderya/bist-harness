@@ -77,6 +77,11 @@ def render(tool: str, env: dict, call_id: str = "C0") -> str:
     if env["status"] == "ERROR":
         return f"{tool}: ERROR {env['error']['code']} - {env['error']['message']}"
     w = [x["code"] for x in env.get("warnings", [])]
+    notes = "".join(f"\nHarness: {n['message']}" for n in env.get("harness_notes", []))
+    return _render_body(tool, env, call_id, w) + notes
+
+
+def _render_body(tool: str, env: dict, call_id: str, w: list[str]) -> str:
     fn = EXTRACTORS.get(tool)
     if fn:
         try:

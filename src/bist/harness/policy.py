@@ -29,6 +29,16 @@ def _last(calls: list[dict], tool: str) -> dict | None:
     return None
 
 
+def _last_for(calls: list[dict], tool: str, ticker: str) -> dict | None:
+    """Last call of `tool` about `ticker` (results without a ticker field count for any ticker)."""
+    for c in reversed(calls):
+        if c["tool"] == tool:
+            t = (c["envelope"].get("data") or {}).get("ticker")
+            if t is None or t == ticker:
+                return c["envelope"]
+    return None
+
+
 def _codes(env: dict | None) -> set[str]:
     return {w["code"] for w in (env or {}).get("warnings", [])}
 
@@ -125,7 +135,7 @@ def catchup_history_ok(env: dict | None) -> bool:
 def signals(calls: list[dict], ticker: str, as_of: str | None) -> dict:
     s = {"fund": {"present": False, "partial": False, "deterioration": False}, "reversal": {"present": False, "partial": False},
          "catchup": {"present": False, "partial": False}, "pattern": {"present": False, "market_wide": False, "tested": False}}
-    fc = _last(calls, "calculate_fundamental_change")
+    fc = _last_for(calls, "calculate_fundamental_change", ticker)
     if fc and _ok(fc) and not (_codes(fc) & {"LATE_FILING", "STALE_FUNDAMENTALS"}):
         d = fc["data"]
         rc = d["ratio_changes"]
@@ -142,7 +152,7 @@ def signals(calls: list[dict], ticker: str, as_of: str | None) -> dict:
             import pandas as pd
             fresh = (pd.Timestamp(as_of) - pd.Timestamp(eff)).days <= FRESH_DAYS
         s["fund"].update(present=bool(up and confirm >= 1 and fresh), partial=bool(up and not (confirm >= 1 and fresh)), deterioration=bool(down))
-    rv = _last(calls, "detect_reversal_events")
+    rv = _last_for(calls, "detect_reversal_events", ticker)
     if rv and _ok(rv):
         d = rv["data"]
         bull = [e for e in d["recent_events"] if e["direction"] == "bullish"]
@@ -155,7 +165,7 @@ def signals(calls: list[dict], ticker: str, as_of: str | None) -> dict:
             s["reversal"].update(present=True, history_ok=good)
         elif d["recent_events"]:
             s["reversal"]["partial"] = True
-    ind = _last(calls, "calculate_indicators")
+    ind = _last_for(calls, "calculate_indicators", ticker)
     if ind and _ok(ind) and not s["reversal"]["present"] and ind["data"]["states"].get("rsi_zone") == "oversold":
         s["reversal"]["partial"] = True
     sec = _last(calls, "rank_sector_relative_strength")
@@ -163,7 +173,7 @@ def signals(calls: list[dict], ticker: str, as_of: str | None) -> dict:
         d = sec["data"]
         me = next((m for m in d["ranking_lagging_first"] if m["ticker"] == ticker), None)
         if me and me["lag_rank"] <= 2:
-            hist_ok = catchup_history_ok(_last(calls, "test_catch_up_history"))
+            hist_ok = catchup_history_ok(_last_for(calls, "test_catch_up_history", ticker))
             present = bool(d["sector_strong"]) and hist_ok
             s["catchup"].update(present=present, partial=not present, history_ok=hist_ok)
     for c in calls:

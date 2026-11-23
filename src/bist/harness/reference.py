@@ -29,7 +29,8 @@ def plan(ticker: str, focus: str, horizon_days: int = 10, weekday: str = "THU", 
     evidence_dates: extra dated evidence for check_data_quality (e.g. a requested analysis date beyond the data -> LEAKAGE).
     """
     rng = {k: v for k, v in (("start", start), ("end", end)) if v}
-    dq = {"tickers": [ticker], "analysis_type": focus}
+    group = [ticker, *peers] if (peers and focus == "sector_catchup") else [ticker]   # S1: every selected ticker may become the main one
+    dq = {"tickers": group, "analysis_type": focus}
     if end:
         dq["evidence_dates"] = [{"source": "analysis window end", "date": end}]
     if evidence_dates:
@@ -38,7 +39,7 @@ def plan(ticker: str, focus: str, horizon_days: int = 10, weekday: str = "THU", 
     p = [("LOAD_MARKET_DATA", "get_stock_history", {"ticker": ticker, "max_rows": 5}),
          ("LOAD_MARKET_DATA", "get_index_history", {"max_rows": 5}),
          ("CHECK_DATA_QUALITY", "check_data_quality", dq),
-         ("CALCULATE_TECHNICALS", "calculate_indicators", {"ticker": ticker}),
+         *[("CALCULATE_TECHNICALS", "calculate_indicators", {"ticker": t}) for t in group],
          ("RUN_SECTOR_RELATIVE_ANALYSIS", "rank_sector_relative_strength", {**sector, "horizon_days": horizon_days})]
     if focus in ("sector_catchup", "general"):
         ch = {"ticker": ticker, "lookback_days": min(60, max(5, horizon_days)), **rng}

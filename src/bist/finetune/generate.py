@@ -8,6 +8,7 @@ Writes questions.jsonl, train.jsonl, val.jsonl, test.jsonl and stats.json. `vali
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import re
@@ -48,6 +49,16 @@ def _trace(q, db, inject_pick) -> dict:
         _cleanup_sessions(before)
 
 
+def wants_error(seed: int, qid: str, error_share: float) -> bool:
+    """Whether a (train) question gets an injected error: a pure function of seed and id, so resumed and fresh runs agree."""
+    return random.Random(f"{seed}-{qid}-err").random() < error_share
+
+
+def cache_key(q, seed: int, error_share: float) -> str:
+    raw = json.dumps([question_record(q), seed, error_share], ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+
 def _write_jsonl(path: Path, rows) -> None:
     path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
 
@@ -57,17 +68,19 @@ def main(n: int = 300, seed: int = 0, out_dir: Path = Path("finetune/data"), err
     cache = out_dir / "traces"
     cache.mkdir(parents=True, exist_ok=True)
     db = DecisionLog(db_path or Path(tempfile.gettempdir()) / "bist_finetune_gen.sqlite")
-    rng = random.Random(seed + 1)
     qs = build_questions(n, seed)
     traces = {}
     for q in qs:
         f = cache / f"{q.id}.json"
-        if f.exists():
-            traces[q.id] = json.loads(f.read_text(encoding="utf-8"))
-            continue
-        want_err = q.split == "train" and rng.random() < error_share
-        pick = (lambda kinds, r=random.Random(f"{seed}-{q.id}"): r.choice(kinds) if kinds else None) if want_err else None
-        t = _trace(q, db, pick)
+        key = cache_key(q, seed, error_share)
+        if f.exists():   # reuse only a successful trace of exactly this question and settings; failures are retried
+            t = json.loads(f.read_text(encoding="utf-8"))
+            if t.get("key") == key and t.get("ok"):
+                traces[q.id] = t
+                continue
+        want_err = q.split == "train" and wants_error(seed, q.id, error_share)
+        pick = (lambda kinds, r=random.Random(f"{seed}-{q.id}-kind"): r.choice(kinds) if kinds else None) if want_err else None
+        t = {**_trace(q, db, pick), "key": key}
         f.write_text(json.dumps(t, ensure_ascii=False), encoding="utf-8")
         traces[q.id] = t
         print(f"{q.id} {q.split} {q.scenario} {q.negative or '-'} -> {t.get('ref_action') or 'SKIPPED ' + t.get('reason', '')}", flush=True)
