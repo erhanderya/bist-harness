@@ -144,8 +144,12 @@ def replay(q: Question, db, inject: str | Callable[[list[str]], str | None] | No
         problems.append("fallback")
     if h.final and h.final["action"] != final["action"]:
         problems.append(f"action {h.final['action']} != {final['action']}")
-    if h.violations:
-        problems.append(f"violations {[v['code'] for v in h.violations]}")
+    ref_failed = {c["tool"] for c in ref_h.calls if c["envelope"]["status"] == "ERROR"}
+    # a mandatory tool that fails on the data for the reference too (e.g. run_backtest with too little history) is re-run by the
+    # harness and flagged; the scripted call was the correct one, so this is not a model failure
+    real = [v for v in h.violations if not (v["code"] == "MANDATORY_TOOL_RUN_BY_HARNESS" and v["tool"] in ref_failed)]
+    if real:
+        problems.append(f"violations {[v['code'] for v in real]}")
     if policy.quality_verdict(h.calls) != policy.quality_verdict(ref_h.calls):
         problems.append("quality verdict differs")
     if problems:

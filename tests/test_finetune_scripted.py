@@ -105,3 +105,11 @@ def test_future_period_is_clipped(db):
 
 def test_advice_prefix_passes_validator_wording():
     assert not policy._ADVICE.search(policy._DISCLAIM_STRIP.sub(" ", ADVICE_PREFIX)) and not policy._numbers(ADVICE_PREFIX)
+
+
+def test_required_tool_error_in_reference_is_not_a_mismatch(db):
+    # early 2015: run_backtest errors (too little data) for the reference too; the harness re-runs it and flags it -> not a model failure
+    q = Q(plan_kw={"pattern": "weekday_sequence", "pattern_kw": {"down_days": ["MON", "TUE", "WED"], "up_days": ["THU", "FRI"]}},
+          negative="short_history", as_of="2015-06-18", start="2015-01-02", end="2015-06-18", text="THYAO Mon-Wed down, Thu-Fri up, early 2015?")
+    h, chat = replay(q, db)
+    assert {v["code"] for v in h.violations} <= {"MANDATORY_TOOL_RUN_BY_HARNESS"}
