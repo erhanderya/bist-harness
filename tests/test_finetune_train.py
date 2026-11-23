@@ -77,3 +77,18 @@ def test_tail_loss_equals_full_loss():
     ref = m(input_ids=ids, labels=labels).loss
     got = tail_loss(m, {"input_ids": ids, "attention_mask": torch.ones_like(ids)}, labels)
     assert torch.allclose(ref, got, atol=1e-5)
+
+
+def test_trainer_evaluate_runs(tmp_path):
+    """Evaluation goes through compute_loss(return_outputs=True); it must not crash (it did at step 60 of the first run)."""
+    import torch
+    from transformers import Qwen3Config, Qwen3ForCausalLM, TrainingArguments
+    from bist.finetune.train import _trainer_cls
+    torch.manual_seed(0)
+    m = Qwen3ForCausalLM(Qwen3Config(vocab_size=50, hidden_size=16, intermediate_size=32, num_hidden_layers=1, num_attention_heads=2,
+                                     num_key_value_heads=1, head_dim=8))
+    data = [{"input_ids": [1, 2, 3, 4, 5], "labels": [IGNORE, IGNORE, IGNORE, 4, 5]}] * 2
+    args = TrainingArguments(output_dir=str(tmp_path), per_device_eval_batch_size=1, report_to=[], use_cpu=True,
+                             remove_unused_columns=False, prediction_loss_only=True)
+    tr = _trainer_cls()(model=m, args=args, eval_dataset=data, data_collator=lambda b: collate(b, 0))
+    assert tr.evaluate()["eval_loss"] > 0

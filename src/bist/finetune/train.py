@@ -88,7 +88,7 @@ def _trainer_cls():
             inputs = dict(inputs)
             labels = inputs.pop("labels")
             loss = tail_loss(model, inputs, labels, num_items_in_batch)
-            return (loss, None) if return_outputs else loss
+            return (loss, {"loss": loss}) if return_outputs else loss   # evaluation reads outputs as a dict
 
     return TailLossTrainer
 
