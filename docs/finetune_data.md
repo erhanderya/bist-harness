@@ -67,15 +67,18 @@ sonra en geride kalan hisse için `test_catch_up_history`. S1'de kalite kontrol�
 | | train | val | test | toplam |
 |---|---|---|---|---|
 | Soru | 229 | 26 | 45 | **300** (atlanan 0) |
-| Örnek (tur) | 2.737 | 321 | 553 | **3.611** |
+| Örnek (tur) | 2.754 | 314 | 550 | **3.618** |
 
-- **Senaryo (soru):** S1 59 · S2 62 · S3 59 · S4 60 · S5 60. **Dil:** EN 151 · TR 149.
+- **Senaryo (soru):** S1 58 · S2 59 · S3 54 · S4 61 · S5 68 (S5 fazlası: tavsiye sorularının çoğu Q5 tipi makro iddia). **Dil:** EN 151 · TR 149.
+- **Sınav çerçevesine uyum:** 104 soru veri dönemi 2024-01-01 – 2026-09-10 ve analiz tarihi 2026-09-10; 23 iki dönemli S2 sorusu
+  ("A–B döneminde var mı, C–D'de hâlâ geçerli mi", `oos_start`); 13 iddialı tavsiye sorusu ("X yükseliyor, hisse kesin çıkar, alayım mı, hedef ver"),
+  açıklamaları "A certain price increase is not supported by the tool evidence; …" cümlesini içerir; S1'de ana hissenin temel verisi de yüklenir.
 - **Olumsuz:** 66 soru (%22): advice 22, beyond_data 8, future_period 8, short_history 8, small_peer_group 7, missing_number 7, skip_quality 6.
-- **Referans eylemi:** WATCH 130, REJECT_SIGNAL 107, INVESTIGATE 26, HOLD 13, ANALYSIS_UNSAFE 13, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 9,
-  POTENTIAL_CATCH_UP_CANDIDATE 2, TECHNICAL_REVERSAL_CANDIDATE 0 (aday etiketleri gerçek veride nadir; harness kuralları gereği).
-- **Tur türü:** select 300, tool_call 2.297, next_state 696, recovery 18, final 300.
-- **Hata-düzeltme izleri:** 18 (max_rows 9, bad_event 5, bad_condition 2, missing_weekday 2; unknown_peer ve bad_factor bu seed'de seçilmedi).
-- **Token (Qwen şablonu, araçlarla):** ort. 2.200, p95 3.648, maks 5.540 (sınır 16.384).
+- **Referans eylemi:** WATCH 132, REJECT_SIGNAL 92, INVESTIGATE 36, HOLD 17, ANALYSIS_UNSAFE 13, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 10,
+  POTENTIAL_CATCH_UP_CANDIDATE 0, TECHNICAL_REVERSAL_CANDIDATE 0 (aday etiketleri gerçek veride nadir; harness kuralları gereği — Faz 6 öncesi bilinen boşluk).
+- **Tur türü:** select 300, tool_call 2.384, next_state 612, recovery 22, final 300.
+- **Hata-düzeltme izleri:** 22 (max_rows 9, bad_condition 7, bad_event 4, missing_weekday 1, bad_factor 1; unknown_peer bu seed'de seçilmedi).
+- **Token (Qwen şablonu, araçlarla):** ort. 2.240, p95 3.690, maks 5.900 (sınır 16.384).
 
 ## Kontroller (`validate_dataset`)
 Son mesaj asistan hedefi; final hedefi geçerli JSON ve izinli eylem; ≤ 16.384 token (Qwen şablonu, araçlarla); hiçbir araç mesajında
