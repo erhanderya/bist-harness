@@ -9,7 +9,9 @@ Tasarım: `docs/superpowers/specs/2026-11-23-faz5-training-data-design.md` · Pl
 | `train.jsonl`, `val.jsonl`, `test.jsonl` | Tur başına bir SFT örneği (girdi = ajanın o turda modele gönderdiği bağlam + araç tanımları, hedef = son asistan mesajı) |
 | `questions.jsonl` | Her soru: metin, slotlar, bölme, referans eylemi, enjekte edilen hata türü |
 | `stats.json` | Dağılımlar, atlanan sorular, token istatistikleri |
-| `traces/` (gitignore) | Soru başına önbellek; üretim kaldığı yerden devam eder |
+| `traces/` | Soru başına önbellek; üretim kaldığı yerden devam eder |
+
+`finetune/data/` gitignore'da (repoda yok, ~29 MB); aşağıdaki komutla birebir yeniden üretilir.
 
 Yeniden üretim (deterministik, seed'li; yaklaşık 1 saat):
 ```

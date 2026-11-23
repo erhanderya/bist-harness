@@ -19,4 +19,4 @@
 
 ## Eğitim verisi (Faz 5)
 - Paket: `src/bist/finetune/` — `templates.py` (şablon sorular, bölme), `scripted.py` (ScriptedChat: referans izi LLMAgent içinde), `export.py` (Qwen/HF format, token), `generate.py`.
-- Üretim: `HF_HOME=.cache/hf ... -m bist.finetune.generate --n 300 --seed 0` (önbellek `finetune/data/traces/`, gitignore); `--check-only` kontroller. Doküman: docs/finetune_data.md.
+- Üretim: `HF_HOME=.cache/hf ... -m bist.finetune.generate --n 300 --seed 0` (`finetune/data/` gitignore'da; önbellek `traces/`); `--check-only` kontroller. Doküman: docs/finetune_data.md.

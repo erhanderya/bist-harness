@@ -9,4 +9,3 @@ logs/
 finetune/data/
 *.sqlite
 .superpowers/
-finetune/data/traces/
