@@ -38,6 +38,12 @@ GENERATE_EXPLANATION'da `{"action", "explanation"}` JSON. İstisna: S1'de `rank_
 sonra en geride kalan hisse için `test_catch_up_history`. S1'de kalite kontrolü ve `calculate_indicators` seçilen tüm hisseler için
 çalışır (ana hisse sıralamadan sonra değişebilir); karar yalnız ana hisseye ait araç sonuçlarından verilir.
 
+5. **Aday etiketi eki** (`bist.finetune.candidates`): aday koşulları (sinyal + destekleyen backtest) gerçek veride nadir olduğundan
+   rastgele sette neredeyse yok. `python -m bist.finetune.candidates --n 1600` 1.600 deterministik şablon çekilişini referans ajanla
+   tarar (5 süreç, ~25 dk) ve sonucu `*_CANDIDATE` olanların anahtarlarını `finetune/candidate_seeds.json`'a yazar (repoda). Üretim bu
+   dosyadan soruları taramasız yeniden kurar (`c0001…` id'leri; `--no-candidates` ile kapatılır). Train/val çekilişleri hiçbir test
+   özelliği taşımaz, test çekilişleri test hissesi/kalıbı taşır. Ek, olumsuz oranı ve senaryo dengesi kontrolünün dışındadır.
+
 ## Kurallar ve kararlar
 - **S1 ana hisse kuralı (harness):** `sector_catchup` odağında birden çok hisse seçiliyse `rank_sector_relative_strength` sonrasında ana
   hisse en geride kalan seçili hisse olur; araç sonucunda `Harness: main ticker set to …` notu görünür (`harness_notes`; aracın kendi durumu değişmez, replay bozulmaz). ("Hangisi en çok geride kaldı?"
@@ -62,20 +68,25 @@ sonra en geride kalan hisse için `test_catch_up_history`. S1'de kalite kontrol�
   Hocanın 5 orijinal sorusu ve (hisse, 2024-01-01–2026-09-10) kombinasyonu train/val'de yok.
 
 ## Sayılar
-Üretim 2026-11-23, `--n 300 --seed 0`, ~12 dk (RTX 4060 dizüstü; GPU kullanılmaz). Kaynak: `finetune/data/stats.json`.
+Üretim 2026-11-23, `--n 300 --seed 0` + 25 aday eki, ~13 dk (RTX 4060 dizüstü; GPU kullanılmaz). Kaynak: `finetune/data/stats.json`.
 
 | | train | val | test | toplam |
 |---|---|---|---|---|
-| Soru | 229 | 26 | 45 | **300** (atlanan 0) |
-| Örnek (tur) | 2.754 | 314 | 550 | **3.618** |
+| Soru | 247 | 28 | 50 | **325** (300 ana + 25 aday; atlanan 0) |
+| Örnek (tur) | 2.976 | 339 | 612 | **3.927** |
+
+Aşağıdaki dağılımlar (senaryo, dil, olumsuz, tur, hata, token) 300 soruluk ana set içindir; eylem dağılımı eki de içerir.
 
 - **Senaryo (soru):** S1 58 · S2 59 · S3 54 · S4 61 · S5 68 (S5 fazlası: tavsiye sorularının çoğu Q5 tipi makro iddia). **Dil:** EN 151 · TR 149.
 - **Sınav çerçevesine uyum:** 104 soru veri dönemi 2024-01-01 – 2026-09-10 ve analiz tarihi 2026-09-10; 23 iki dönemli S2 sorusu
   ("A–B döneminde var mı, C–D'de hâlâ geçerli mi", `oos_start`); 13 iddialı tavsiye sorusu ("X yükseliyor, hisse kesin çıkar, alayım mı, hedef ver"),
   açıklamaları "A certain price increase is not supported by the tool evidence; …" cümlesini içerir; S1'de ana hissenin temel verisi de yüklenir.
 - **Olumsuz:** 66 soru (%22): advice 22, beyond_data 8, future_period 8, short_history 8, small_peer_group 7, missing_number 7, skip_quality 6.
-- **Referans eylemi:** WATCH 132, REJECT_SIGNAL 92, INVESTIGATE 36, HOLD 17, ANALYSIS_UNSAFE 13, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 10,
-  POTENTIAL_CATCH_UP_CANDIDATE 0, TECHNICAL_REVERSAL_CANDIDATE 0 (aday etiketleri gerçek veride nadir; harness kuralları gereği — Faz 6 öncesi bilinen boşluk).
+- **Referans eylemi:** WATCH 132, REJECT_SIGNAL 92, INVESTIGATE 36, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 34 (10 ana + 24 ek; 5'i test),
+  HOLD 17, ANALYSIS_UNSAFE 13, POTENTIAL_CATCH_UP_CANDIDATE 1, TECHNICAL_REVERSAL_CANDIDATE 0.
+- **Aday taraması:** 1.600 çekilişte 40 aday (39 FUNDAMENTAL, 1 CATCH_UP, 0 TECHNICAL_REVERSAL). Teknik dönüş ve yakalama adayı
+  backtest'in `SUPPORTS` vermesini ister; 2019–2026 BIST verisinde bu neredeyse hiç olmuyor — bu iki etiket eğitimde yok/tek örnekli
+  kalır (bilinen sınırlama). Doğrulayıcı izinli olmayan aday etiketini zaten reddeder.
 - **Tur türü:** select 300, tool_call 2.384, next_state 612, recovery 22, final 300.
 - **Hata-düzeltme izleri:** 22 (max_rows 9, bad_condition 7, bad_event 4, missing_weekday 1, bad_factor 1; unknown_peer bu seed'de seçilmedi).
 - **Token (Qwen şablonu, araçlarla):** ort. 2.240, p95 3.690, maks 5.900 (sınır 16.384).
@@ -83,9 +94,10 @@ sonra en geride kalan hisse için `test_catch_up_history`. S1'de kalite kontrol�
 ## Kontroller (`validate_dataset`)
 Son mesaj asistan hedefi; final hedefi geçerli JSON ve izinli eylem; ≤ 16.384 token (Qwen şablonu, araçlarla); hiçbir araç mesajında
 analiz tarihinden sonraki tarih yok (soru/kullanıcı mesajındaki tarihler hariç); test hisseleri ve orijinal sorular train/val'de yok;
-olumsuz oranı %20–25; S1–S5 ±5 puan dengeli. Testler: `tests/test_finetune_{templates,scripted,generate}.py`.
+olumsuz oranı %20–25; S1–S5 ±5 puan dengeli. Testler: `tests/test_finetune_{templates,scripted,generate,candidates}.py`.
 
 ## Bilinen sınırlamalar
 - İfade çeşitliliği kalıp sayısıyla sınırlı (yaklaşım A); canlı testteki alışılmadık ifadeler için risk.
 - Açıklama metni deterministik şablondur (`policy.build_explanation`); model akıcı değil, kanıta bağlı yazmayı öğrenir.
 - Evren dışı hisse sorusu (ör. GARAN) eğitimde yok.
+- TECHNICAL_REVERSAL_CANDIDATE hiç, POTENTIAL_CATCH_UP_CANDIDATE yalnız 1 örnekte (koşullar veride çok nadir; yukarıya bkz.).
