@@ -13,7 +13,7 @@ Tasarım: `docs/superpowers/specs/2026-11-23-faz5-training-data-design.md` · Pl
 
 `finetune/data/` gitignore'da (repoda yok, ~29 MB); aşağıdaki komutla birebir yeniden üretilir.
 
-Yeniden üretim (deterministik, seed'li; yaklaşık 1 saat):
+Yeniden üretim (deterministik, seed'li; ~12 dk):
 ```
 cd /c/Projects/econ/bist-harness
 HF_HOME=.cache/hf PYTHONPATH=src PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -m bist.finetune.generate --n 300 --seed 0
@@ -35,11 +35,12 @@ HF_HOME=.cache/hf PYTHONPATH=src PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe
 Tur kuralları: SELECT_UNIVERSE'de `select_universe` (hisseler sorudaki sırayla, odak, analiz tarihi, dönem); her çalışma durumunda o
 durumun referans çağrıları + `next_state` tek turda; çağrı yoksa yalnız `next_state` (gereksiz araç kullanmamayı öğretir);
 GENERATE_EXPLANATION'da `{"action", "explanation"}` JSON. İstisna: S1'de `rank_sector_relative_strength` ayrı tur, sonucu görüldükten
-sonra en geride kalan hisse için `test_catch_up_history`.
+sonra en geride kalan hisse için `test_catch_up_history`. S1'de kalite kontrolü ve `calculate_indicators` seçilen tüm hisseler için
+çalışır (ana hisse sıralamadan sonra değişebilir); karar yalnız ana hisseye ait araç sonuçlarından verilir.
 
 ## Kurallar ve kararlar
 - **S1 ana hisse kuralı (harness):** `sector_catchup` odağında birden çok hisse seçiliyse `rank_sector_relative_strength` sonrasında ana
-  hisse en geride kalan seçili hisse olur; sonuçta `MAIN_TICKER_SET_TO_LAGGARD` uyarısı görünür. ("Hangisi en çok geride kaldı?"
+  hisse en geride kalan seçili hisse olur; araç sonucunda `Harness: main ticker set to …` notu görünür (`harness_notes`; aracın kendi durumu değişmez, replay bozulmaz). ("Hangisi en çok geride kaldı?"
   sorusunda model en geride kalanı sıralamadan önce bilemez.)
 - **Hata-düzeltme izleri (~%10 train):** bir durumda önce ölçümde görülen türden hatalı bir çağrı (`max_rows=1000`, `rsi_minimum`
   koşulu, `rsi_oversold` olay türü, evren dışı peer `HUBER`, eksik `weekday`, yanlış faktör adı), harness'ten ERROR, sonra düzeltilmiş
@@ -70,11 +71,11 @@ sonra en geride kalan hisse için `test_catch_up_history`.
 
 - **Senaryo (soru):** S1 59 · S2 62 · S3 59 · S4 60 · S5 60. **Dil:** EN 151 · TR 149.
 - **Olumsuz:** 66 soru (%22): advice 22, beyond_data 8, future_period 8, short_history 8, small_peer_group 7, missing_number 7, skip_quality 6.
-- **Referans eylemi:** WATCH 136, REJECT_SIGNAL 109, INVESTIGATE 18, HOLD 13, ANALYSIS_UNSAFE 13, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 9,
+- **Referans eylemi:** WATCH 130, REJECT_SIGNAL 107, INVESTIGATE 26, HOLD 13, ANALYSIS_UNSAFE 13, FUNDAMENTAL_IMPROVEMENT_CANDIDATE 9,
   POTENTIAL_CATCH_UP_CANDIDATE 2, TECHNICAL_REVERSAL_CANDIDATE 0 (aday etiketleri gerçek veride nadir; harness kuralları gereği).
-- **Tur türü:** select 300, tool_call 2.291, next_state 696, recovery 24, final 300.
-- **Hata-düzeltme izleri:** 24 (max_rows 11, bad_event 7, bad_condition 4, missing_weekday 2).
-- **Token (Qwen şablonu, araçlarla):** ort. 2.185, p95 3.568, maks 5.540 (sınır 16.384).
+- **Tur türü:** select 300, tool_call 2.297, next_state 696, recovery 18, final 300.
+- **Hata-düzeltme izleri:** 18 (max_rows 9, bad_event 5, bad_condition 2, missing_weekday 2; unknown_peer ve bad_factor bu seed'de seçilmedi).
+- **Token (Qwen şablonu, araçlarla):** ort. 2.200, p95 3.648, maks 5.540 (sınır 16.384).
 
 ## Kontroller (`validate_dataset`)
 Son mesaj asistan hedefi; final hedefi geçerli JSON ve izinli eylem; ≤ 16.384 token (Qwen şablonu, araçlarla); hiçbir araç mesajında
