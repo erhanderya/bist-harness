@@ -85,13 +85,14 @@ Tasarım `docs/superpowers/specs/2026-11-23-faz5-training-data-design.md`, dokü
 Komut: `python -m bist.finetune.generate --n 300 --seed 0` (deterministik, ~12 dk, önbellekli).
 - [x] Format: referans izi, senaryolu model ile gerçek `LLMAgent` döngüsünde tekrar oynatılır; her asistan turu = bir örnek
       (girdi = ajanın gönderdiği sıkıştırılmış `context()` + araç tanımları, hedef = tool_call / next_state / final JSON). Qwen/HF mesaj biçimi
-- [x] Dağılım: S1–S5 dengeli (59–62 soru); tur başına araç zincirleri; 18 hata-düzeltme izi (hatalı çağrı → ERROR → düzeltme)
+- [x] Dağılım: S1–S5 dengeli (54–68 soru); tur başına araç zincirleri; 22 hata-düzeltme izi (hatalı çağrı → ERROR → düzeltme)
+- [x] Sınav uyumu (2026-11-23): 104 soru 2024-01-01–2026-09-10 çerçevesinde, 23 iki dönemli S2 (Q2), 13 iddialı tavsiye (Q5), S1'de temel veri (Q1)
 - [x] Olumsuz/güvenlik örnekleri %22 (tavsiye, veri ötesi tarih → HARD_BLOCK, ileri dönem kırpma, kısa geçmiş, küçük peer grubu, uydurulamayacak sayı, kontrolü atlama)
 - [x] Soru çeşitliliği: TR 149 / EN 151, senaryo×dil başına 12 kalıp, karışık tarih yazımı (yaklaşım A: yalnız şablon, paraphrase yok — kullanıcı kararı)
 - [x] Açıklamalar referans şablonu (`policy.build_explanation`), sayılar araç çıktısından; tümü doğrulayıcıdan geçti
 - [x] Ayrım: test = TCELL/FROTO/ENJSA/PGSUS veya analiz tarihi 2023 H1 veya yalnız-test kalıbı; 5 orijinal soru train/val'de yok
 - [x] Harness: S1'de ana hisse sıralamadan sonra en geride kalana geçer (`harness_notes`), kalite/teknik tüm seçili hisselerde, sinyaller ana hisseye ait çağrılardan; `Harness.history`
-- **Çıktı:** `finetune/data/{train,val,test}.jsonl` = 2.737 / 321 / 553 örnek (300 soru: 229/26/45), token maks 5.540
+- **Çıktı:** `finetune/data/{train,val,test}.jsonl` = 2.754 / 314 / 550 örnek (300 soru: 229/26/45), token maks 5.900
 
 ## Faz 6 — İnce ayar (≈ 2–3 gün, deneme dahil)
 - **Seçilen model: `Qwen/Qwen3-4B-Instruct-2507`** (karar 2026-11-19, web araştırmasıyla teyitli). Gerekçe: yalnız non-thinking (`<think>` yok),

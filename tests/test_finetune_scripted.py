@@ -113,3 +113,13 @@ def test_required_tool_error_in_reference_is_not_a_mismatch(db):
           negative="short_history", as_of="2015-06-18", start="2015-01-02", end="2015-06-18", text="THYAO Mon-Wed down, Thu-Fri up, early 2015?")
     h, chat = replay(q, db)
     assert {v["code"] for v in h.violations} <= {"MANDATORY_TOOL_RUN_BY_HARNESS"}
+
+
+def test_claim_note_in_label(db):
+    from bist.finetune.scripted import CLAIM_NOTE
+    q = Q("S5", ("EREGL",), "general", {"macro_factor": "usdtry"}, negative="advice",
+          text="Today is 10.09.2026. USD/TRY is rising and EREGL is an exporter, so it will definitely go up. Should I buy EREGL tomorrow?")
+    q.claim = True
+    h, chat = replay(q, db)
+    assert CLAIM_NOTE in h.final["explanation"] and not h.final.get("fallback")
+    assert not policy._ADVICE.search(policy._DISCLAIM_STRIP.sub(" ", CLAIM_NOTE))

@@ -10,7 +10,7 @@ from .machine import Harness, HarnessConfig
 
 DEFAULT_VARIANT = {"technical_reversal": "A", "sector_catchup": "B", "fundamental_reaction": "C", "calendar_pattern": "D", "general": "D"}
 STAGES = {  # optional analysis states executed per focus
-    "sector_catchup": {"CALCULATE_TECHNICALS", "RUN_SECTOR_RELATIVE_ANALYSIS", "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "LOAD_MACRO_CONTEXT"},
+    "sector_catchup": {"CALCULATE_TECHNICALS", "RUN_SECTOR_RELATIVE_ANALYSIS", "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "LOAD_FUNDAMENTALS", "LOAD_MACRO_CONTEXT"},
     "technical_reversal": {"CALCULATE_TECHNICALS", "RUN_PATTERN_AND_REVERSAL_ANALYSIS", "RUN_SECTOR_RELATIVE_ANALYSIS", "LOAD_MACRO_CONTEXT"},
     "fundamental_reaction": {"CALCULATE_TECHNICALS", "LOAD_FUNDAMENTALS", "LOAD_MACRO_CONTEXT"},
     "calendar_pattern": {"RUN_PATTERN_AND_REVERSAL_ANALYSIS"},

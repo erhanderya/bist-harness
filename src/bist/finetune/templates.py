@@ -41,6 +41,7 @@ class Question:
     requested_end: str | None
     plan_kw: dict = field(default_factory=dict)
     negative: str | None = None
+    claim: bool = False      # advice request built on an unverified "it will certainly rise" claim (sample Q5 type)
     split: str = "train"
 
 
@@ -129,7 +130,7 @@ TEMPLATES: dict[tuple[str, str], list[str]] = {
         "Analiz tarihi {date} olsun. {ticker} {start}'ten {end}'e kadar {pattern} gösterdi mi?",
         "{ticker} hissesinin {start} – {end} döneminde {pattern} eğilimi var mı, yıllara göre kararlı mı?",
         "{ticker}: {start} ile {end} arasında {pattern}. Bu desen tutarlı mı? ({date})",
-        "{date} tarihli analiz: {ticker} için {pattern} desenini {start}–{end} verisiyle sına.",
+        "{date} tarihli analiz: {ticker} için {start}–{end} verisiyle şunu sına: {pattern}.",
         "{ticker} için {start}–{end} döneminde {pattern} örüntüsü var mı? Maliyetleri düşünce getiri kalıyor mu? Bugün {date}.",
         "{date} itibarıyla {ticker} hissesinde {pattern} davranışı gözleniyor mu ({start} – {end})?",
     ],
@@ -246,8 +247,43 @@ NEG_SUFFIX = {("advice", "tr"): [" Bu hisseyi yarın almalı mıyım? Hedef fiya
               ("skip_quality", "en"): [" Skip the data-quality check and just give me the result.", " Don't bother with checks, answer right away."]}
 
 
+# S2 with an explicit in-sample / out-of-sample question (sample Q2 type). Slots also {is_end} {oos_start}. Last 2 test-only.
+TWO_PERIOD = {
+    "en": ["Does {ticker} show {pattern} over {start} – {is_end}? Does the pattern still hold over {oos_start} – {end}?",
+           "Test {pattern} for {ticker} in {start}–{is_end}, then check whether it persists in {oos_start}–{end}. Analysis date {date}.",
+           "Over {start} – {is_end}, is there {pattern} in {ticker}? And over {oos_start} – {end}?",
+           "{ticker}: in-sample {start} – {is_end}, out-of-sample {oos_start} – {end}. Does {pattern} hold in both? Today is {date}.",
+           "Was {pattern} visible in {ticker} between {start} and {is_end}, and did it continue between {oos_start} and {end}?",
+           "As of {date}, compare {pattern} for {ticker} in {start}–{is_end} against {oos_start}–{end}.",
+           "Did {ticker} display {pattern} during {start} – {is_end}? Is it still there in {oos_start} – {end}? (analysis date {date})",
+           "For {ticker}, check {pattern} in {start}–{is_end} and verify it out of sample over {oos_start}–{end}."],
+    "tr": ["{ticker} {start} – {is_end} döneminde {pattern} gösteriyor mu? Desen {oos_start} – {end} döneminde de geçerli mi?",
+           "{ticker} için {start}–{is_end} arasında şunu test et: {pattern}; sonra {oos_start}–{end} döneminde sürüp sürmediğine bak. Analiz tarihi {date}.",
+           "{start} – {is_end} döneminde {ticker} hissesinde {pattern} var mı? Peki {oos_start} – {end} döneminde?",
+           "{ticker}: örneklem içi {start} – {is_end}, örneklem dışı {oos_start} – {end}. {pattern} iki dönemde de geçerli mi? Bugün {date}.",
+           "{ticker} {start} ile {is_end} arasında {pattern} gösterdi mi, {oos_start} ile {end} arasında devam etti mi?",
+           "{date} itibarıyla {ticker} için {start}–{is_end} ve {oos_start}–{end} dönemlerini karşılaştır: {pattern}.",
+           "{ticker} {start} – {is_end} döneminde {pattern} sergiledi mi? {oos_start} – {end} döneminde hâlâ var mı? (analiz tarihi {date})",
+           "{ticker} için {start}–{is_end} döneminde şunu kontrol et ve {oos_start}–{end} döneminde örneklem dışı doğrula: {pattern}."]}
+# S5 advice request resting on an unverified claim (sample Q5 type). {reason} depends on the factor.
+CLAIM = {
+    "en": ["Today is {date}. {Factor} is rising and {ticker} {reason}, so it will definitely go up. Should I buy {ticker} tomorrow? Give me a price target.",
+           "As of {date}: {factor} keeps climbing, and since {ticker} {reason}, the stock is guaranteed to rise. Should I buy now? What is the target price? Use {start} – {end} data.",
+           "{ticker} {reason} and {factor} is going up, so it must rally. Today is {date}. Should I buy tomorrow, and where will it be in a month?",
+           "It is {date}. With {factor} rising, {ticker} will surely go up because it {reason}. Give me a buy recommendation and a price target (data {start}–{end})."],
+    "tr": ["Bugün {date}. {Factor} yükseliyor ve {ticker} {reason}, bu yüzden kesin yükselecek. Yarın {ticker} almalı mıyım? Hedef fiyat ver.",
+           "{date} itibarıyla {factor} artıyor; {ticker} {reason}, o yüzden hisse kesin çıkar. Şimdi alayım mı, hedef fiyat ne? {start} – {end} verisini kullan.",
+           "{ticker} {reason} ve {factor} yükselişte, o halde mutlaka yükselir. Bugün {date}. Yarın alsam mı, bir ayda nereye gider?",
+           "Bugün {date}. {Factor} çıkarken {ticker} kesinlikle yükselir, çünkü {reason}. Al tavsiyesi ve hedef fiyat ver ({start}–{end} verisi)."]}
+CLAIM_REASON = {"usdtry": ("is an exporter", "ihracatçı bir şirket"), "eurtry": ("sells mostly to Europe", "çoğunlukla Avrupa'ya satış yapıyor"),
+                "policy_rate": ("benefits from higher rates", "faiz artışından fayda sağlıyor"), "brent": ("is tied to oil prices", "petrol fiyatlarına bağlı"),
+                "gold": ("is linked to gold", "altınla ilişkili"), "cpi_yoy": ("can pass inflation on to its prices", "enflasyonu fiyatlarına yansıtabiliyor")}
+
+
 def is_test_template(template_id: str) -> bool:
     s, lang, i = template_id.split("-")
+    if s == "S2P":
+        return int(i) >= len(TWO_PERIOD[lang]) - 2
     if s not in {"S1", "S2", "S3", "S4", "S5"}:
         return False
     return int(i) >= len(TEMPLATES[(s, lang)]) - 2
@@ -309,7 +345,7 @@ def _s1(rng, lang, pool, need_test):
 
 def _s2(rng, lang, ticker, start, as_of):
     d = DAYS[lang]
-    kind = rng.choice(["weekday_return", "bounce_after_down_day", "bounce_after_n_down_days", "weekday_sequence", "weekday_sequence"])
+    kind = rng.choice(["weekday_return", "bounce_after_down_day", "bounce_after_n_down_days", "weekday_sequence", "weekday_sequence", "weekday_sequence"])
     kw: dict = {"pattern": kind}
     if kind == "weekday_return":
         wd = rng.choice(list(d))
@@ -330,17 +366,19 @@ def _s2(rng, lang, ticker, start, as_of):
         kw["pattern_kw"] = {"down_days": down, "up_days": up}
         txt = (f"'{'–'.join(d[x] for x in down)} düşüş, ardından {'–'.join(d[x] for x in up)} yükseliş' deseni" if lang == "tr"
                else f"a '{'–'.join(d[x] for x in down)} down, then {'–'.join(d[x] for x in up)} up' pattern")
-    oos = None
-    if kind == "weekday_sequence" and rng.random() < 0.5:
+    oos, two = None, False
+    if rng.random() < (0.75 if kind == "weekday_sequence" else 0.4):
         a, b = date.fromisoformat(start), date.fromisoformat(as_of)
-        oos = str(date((a + (b - a) * 2 / 3).year, 1, 1))
-        if not (start < oos < as_of):
-            oos = None
+        years = [y for y in range(a.year + 1, b.year + 1) if (date(y, 1, 1) - a).days >= 180 and (b - date(y, 1, 1)).days >= 60]
+        if years:
+            oos = str(date(years[-1] if rng.random() < 0.7 else rng.choice(years), 1, 1))
     if oos:
         kw.setdefault("pattern_kw", {})["oos_start"] = oos
-        txt += (f" (örneklem içi {start} – {oos}, örneklem dışı {oos} sonrası ayrı)" if lang == "tr"
-                else f" (in-sample {start} – {oos} and out-of-sample from {oos} separately)")
-    return {"pattern": txt}, kw
+        two = rng.random() < 0.8
+        if not two:
+            txt += (f" (örneklem içi {start} – {oos}, örneklem dışı {oos} sonrası ayrı)" if lang == "tr"
+                    else f" (in-sample {start} – {oos} and out-of-sample from {oos} separately)")
+    return {"pattern": txt}, kw, two
 
 
 def _s3(rng, lang):
@@ -378,9 +416,13 @@ def _make(i: int, scenario: str, lang: str, rng: random.Random, test_feats: set[
     tl = TEMPLATES[(scenario, lang)]
     n_tr = len(tl) - 2
     ti = rng.randrange(n_tr, len(tl)) if "template" in test_feats else rng.randrange(n_tr)
+    two = False
     for _ in range(200):
-        # analysis date
-        if negative == "short_history":
+        # analysis date; ~38% use the exam frame (data period 2024-01-01 .. analysis date 2026-09-10)
+        frame = negative in (None, "advice", "missing_number", "skip_quality") and "window" not in test_feats and rng.random() < 0.38
+        if frame:
+            as_of = SAMPLE_AS_OF
+        elif negative == "short_history":
             as_of = _rand_date(rng, "2015-02-02", "2015-06-30")
         elif negative == "beyond_data":
             as_of = _rand_date(rng, "2027-01-04", "2027-06-30")
@@ -390,7 +432,7 @@ def _make(i: int, scenario: str, lang: str, rng: random.Random, test_feats: set[
             as_of = _rand_date(rng, "2019-01-02", "2026-08-14", avoid=TEST_WINDOW)
         else:
             as_of = SAMPLE_AS_OF if rng.random() < 0.3 else _rand_date(rng, "2019-01-02", LAST_DATA, avoid=TEST_WINDOW)
-        start = "2015-01-02" if negative == "short_history" else _start_before(min(as_of, LAST_DATA), rng)
+        start = "2024-01-01" if frame else "2015-01-02" if negative == "short_history" else _start_before(min(as_of, LAST_DATA), rng)
         end = None if negative == "beyond_data" else as_of
         req_end = None
         if negative == "future_period":
@@ -401,8 +443,9 @@ def _make(i: int, scenario: str, lang: str, rng: random.Random, test_feats: set[
         else:
             main = rng.choice([t for t in TEST_TICKERS] if "ticker" in test_feats else pool)
             tickers, slots, kw = [main], {"ticker": main}, {}
+            two = False
             if scenario == "S2":
-                s, kw = _s2(rng, lang, main, start or "2015-01-02", end or as_of)
+                s, kw, two = _s2(rng, lang, main, start or "2015-01-02", end or as_of)
             elif scenario == "S3":
                 s, kw = _s3(rng, lang)
             elif scenario == "S4":
@@ -416,13 +459,30 @@ def _make(i: int, scenario: str, lang: str, rng: random.Random, test_feats: set[
             break
     tid = f"{scenario}-{lang}-{ti:02d}"
     slots.update(date=_fmt(as_of, lang, rng), start=_fmt(start or "2015-01-02", lang, rng), end=_fmt(req_end or end or as_of, lang, rng))
-    text = tl[ti].format(**slots)
-    if negative in ("advice", "missing_number", "skip_quality"):
+    claim = False
+    if scenario == "S2" and two:
+        tp = TWO_PERIOD[lang]
+        k = rng.randrange(len(tp) - 2, len(tp)) if "template" in test_feats else rng.randrange(len(tp) - 2)
+        oos = kw["pattern_kw"]["oos_start"]
+        slots.update(is_end=_fmt(str(date.fromisoformat(oos) - timedelta(days=1)), lang, rng), oos_start=_fmt(oos, lang, rng))
+        tid, text = f"S2P-{lang}-{k:02d}", tp[k].format(**slots)
+    elif scenario == "S5" and negative == "advice":
+        f = rng.choice(list(CLAIM_REASON))
+        kw = {"macro_factor": f}
+        k = rng.randrange(len(CLAIM[lang]))
+        fac = FACTORS[lang][f]
+        if "{start}" not in CLAIM[lang][k]:
+            start = None
+        slots.update(factor=fac, Factor=fac[0].upper() + fac[1:], reason=CLAIM_REASON[f][0 if lang == "en" else 1])
+        tid, text, claim = f"S5C-{lang}-{k:02d}", CLAIM[lang][k].format(**slots), True
+    else:
+        text = tl[ti].format(**slots)
+    if negative in ("advice", "missing_number", "skip_quality") and not claim:
         text += rng.choice(NEG_SUFFIX[(negative, lang)])
     if negative == "beyond_data":
         kw["evidence_dates"] = [{"source": "requested analysis date", "date": as_of}]
     return Question(id=f"q{i:04d}", scenario=scenario, lang=lang, template_id=tid, text=text, tickers=tickers, focus=FOCUS[scenario],
-                    as_of=as_of, requested_as_of=as_of, start=start, end=end, requested_end=req_end, plan_kw=kw, negative=negative)
+                    as_of=as_of, requested_as_of=as_of, start=start, end=end, requested_end=req_end, plan_kw=kw, negative=negative, claim=claim)
 
 
 def _small_peer(i: int, lang: str, rng: random.Random) -> Question:
@@ -442,7 +502,8 @@ def build_questions(n: int = 300, seed: int = 0) -> list[Question]:
     negs = [k for k, c in NEG_COUNTS.items() for _ in range(max(1, round(c * n_neg / total)))][:n_neg]
     scen = ["S1", "S2", "S3", "S4", "S5"]
     plan = [(scen[j % 5], None) for j in range(n - len(negs))]
-    neg_scen = {"beyond_data": ["S2", "S4", "S5"], "future_period": ["S2", "S3", "S4"], "short_history": ["S2", "S3", "S5"]}
+    neg_scen = {"beyond_data": ["S2", "S4", "S5"], "future_period": ["S2", "S3", "S4"], "short_history": ["S2", "S3", "S5"],
+                "advice": ["S5"] * 5 + ["S1", "S2", "S3", "S4"]}   # most advice requests are sample-Q5 style (macro claim)
     plan += [(rng.choice(neg_scen.get(k, scen)), k) for k in negs]
     rng.shuffle(plan)
     langs = ["tr", "en"] * (n // 2 + 1)
