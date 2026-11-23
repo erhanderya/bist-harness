@@ -21,16 +21,19 @@ STAGES = {  # optional analysis states executed per focus
 def plan(ticker: str, focus: str, horizon_days: int = 10, weekday: str = "THU", pattern: str = "weekday_return",
          variant: str | None = None, hold_days: int = 5, start: str | None = None, end: str | None = None,
          peers: list[str] | None = None, pattern_kw: dict | None = None, reversal_kw: dict | None = None,
-         macro_factor: str | None = None) -> list[tuple[str, str, dict]]:
+         macro_factor: str | None = None, evidence_dates: list[dict] | None = None) -> list[tuple[str, str, dict]]:
     """[(state, tool, params)] for the focus. Pure data: also used to build training traces.
 
     start/end: the question's data period, passed to every range-aware tool. peers: explicit peer list from the question.
     pattern_kw / reversal_kw: extra test_weekday_pattern / detect_reversal_events params. macro_factor: adds analyze_macro_sensitivity.
+    evidence_dates: extra dated evidence for check_data_quality (e.g. a requested analysis date beyond the data -> LEAKAGE).
     """
     rng = {k: v for k, v in (("start", start), ("end", end)) if v}
     dq = {"tickers": [ticker], "analysis_type": focus}
     if end:
         dq["evidence_dates"] = [{"source": "analysis window end", "date": end}]
+    if evidence_dates:
+        dq["evidence_dates"] = dq.get("evidence_dates", []) + list(evidence_dates)
     sector = {"tickers": [ticker, *peers]} if peers else {"sector": ticker}
     p = [("LOAD_MARKET_DATA", "get_stock_history", {"ticker": ticker, "max_rows": 5}),
          ("LOAD_MARKET_DATA", "get_index_history", {"max_rows": 5}),
@@ -65,7 +68,8 @@ def run(question: str, ticker: str, focus: str = "general", as_of: str | None = 
         db: DecisionLog | None = None, config: HarnessConfig | None = None, close: bool = True, **plan_kw) -> Harness:
     h = Harness(question, as_of=as_of, focus=focus, db=db, config=config)
     h.advance()                                   # START -> SELECT_UNIVERSE
-    h.select_universe([ticker])
+    peers = plan_kw.get("peers") or []
+    h.select_universe([ticker, *peers] if focus == "sector_catchup" and peers else [ticker])
     t = h.tickers[0]
     wanted = STAGES[focus] | {"LOAD_MARKET_DATA", "CHECK_DATA_QUALITY", "BUILD_EVIDENCE", "PREVIEW_STRATEGIES", "RUN_BACKTEST"}
     if plan_kw.get("macro_factor"):
@@ -79,6 +83,11 @@ def run(question: str, ticker: str, focus: str = "general", as_of: str | None = 
             h.advance(state)
         if state == "BUILD_EVIDENCE" and h.blocked() is False:
             pass
+        if focus == "sector_catchup" and h.tickers[0] != t:   # main ticker moved to the laggard after ranking (S1)
+            if params.get("ticker") == t:
+                params = {**params, "ticker": h.tickers[0]}
+            if tool == "test_catch_up_history" and "peers" in params:
+                params = {**params, "peers": h.tickers[1:]}
         h.call(tool, **params)
     # drive the remaining mandatory states (evidence is built even when blocked, so the refusal is documented)
     while h.state != "RISK_GATE":

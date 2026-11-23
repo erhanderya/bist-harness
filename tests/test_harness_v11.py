@@ -8,7 +8,7 @@ from bist.harness.machine import Harness
 AS_OF = "2026-09-10"
 WIN = {"start": "2024-01-01", "end": AS_OF}
 SAMPLE_RUNS = [
-    ("Q1 retail laggard catch-up", "MAVI", "sector_catchup", {"peers": ["BIMAS", "MGROS"], "horizon_days": 20, **WIN}),
+    ("Q1 retail laggard catch-up", "BIMAS", "sector_catchup", {"peers": ["MGROS", "MAVI"], "horizon_days": 20, **WIN}),
     ("Q2 THYAO Mon-Wed down, Thu-Fri up", "THYAO", "calendar_pattern",
      {"pattern": "weekday_sequence", "pattern_kw": {"down_days": ["MON", "TUE", "WED"], "up_days": ["THU", "FRI"], "oos_start": "2026-01-01"},
       "start": "2024-01-01", "end": AS_OF}),
