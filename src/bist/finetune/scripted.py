@@ -123,10 +123,13 @@ def _run_agent(q: Question, db, history, final, inject) -> tuple[Harness, Script
     return h, chat
 
 
-def replay(q: Question, db, inject: str | None = None) -> tuple[Harness, ScriptedChat]:
+def replay(q: Question, db, inject: str | Callable[[list[str]], str | None] | None = None) -> tuple[Harness, ScriptedChat]:
     """Run the reference, then LLMAgent with ScriptedChat. With `inject`, the wrong call changes the evidence ids, so the label is the
-    agent harness's own reference output (pass 1 ends in the flagged fallback; pass 2 returns that label and must validate)."""
+    agent harness's own reference output (pass 1 ends in the flagged fallback; pass 2 returns that label and must validate).
+    `inject` may be a callable that picks one of the applicable error kinds (or None) after the reference run."""
     ref_h, final = reference_label(q, db)
+    if callable(inject):
+        inject = inject(applicable_errors(ref_h.history))
     bad = ERROR_KINDS[inject](ref_h.history) if inject else None
     if inject and bad is None:
         raise TraceMismatch(f"error kind {inject} not applicable")
@@ -134,6 +137,8 @@ def replay(q: Question, db, inject: str | None = None) -> tuple[Harness, Scripte
         h1, _ = _run_agent(q, db, ref_h.history, {"action": "", "explanation": ""}, bad)
         final = _with_prefix(q, h1, h1.reference_output())
     h, chat = _run_agent(q, db, ref_h.history, final, bad)
+    chat.inject_kind = inject
+    chat.ref_action = final["action"]
     problems = []
     if h.final is None or h.final.get("fallback"):
         problems.append("fallback")
