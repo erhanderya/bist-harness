@@ -129,7 +129,7 @@ def main(a) -> None:
         num_train_epochs=a.epochs, max_steps=a.smoke_steps if a.smoke else -1, learning_rate=a.lr, lr_scheduler_type="cosine",
         warmup_steps=0.03, weight_decay=0.0, max_grad_norm=1.0, bf16=True, optim="paged_adamw_8bit",
         gradient_checkpointing=True, gradient_checkpointing_kwargs={"use_reentrant": False},
-        logging_steps=1 if a.smoke else 5, eval_strategy="steps", eval_steps=a.smoke_steps if a.smoke else a.save_steps,
+        logging_steps=1 if a.smoke else 5, eval_strategy="steps", eval_steps=a.smoke_steps if a.smoke else a.eval_steps,
         save_strategy="steps", save_steps=a.smoke_steps if a.smoke else a.save_steps, save_total_limit=3,
         load_best_model_at_end=False, report_to=[], seed=a.seed, data_seed=a.seed, dataloader_num_workers=0,
         remove_unused_columns=False, prediction_loss_only=True)
@@ -164,7 +164,8 @@ def _cli() -> None:
     ap.add_argument("--accum", type=int, default=16)
     ap.add_argument("--max-len", type=int, default=8192)
     ap.add_argument("--save-steps", type=int, default=20)
-    ap.add_argument("--val-rows", type=int, default=150)
+    ap.add_argument("--val-rows", type=int, default=80)
+    ap.add_argument("--eval-steps", type=int, default=60)
     ap.add_argument("--seed", type=int, default=0)
     main(ap.parse_args())
 
