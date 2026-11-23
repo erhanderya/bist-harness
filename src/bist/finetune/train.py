@@ -115,6 +115,7 @@ def build_model(r: int, alpha: int, dropout: float, upcast: bool = False):
 def main(a) -> None:
     os.environ.setdefault("HF_HOME", str(Path(".cache/hf").resolve()))
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")   # fully local: no Hub calls when saving/loading
     from transformers import TrainingArguments, set_seed
     set_seed(a.seed)
     tok = tokenizer()
