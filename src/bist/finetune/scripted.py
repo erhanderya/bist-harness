@@ -19,6 +19,7 @@ from ..harness.machine import Harness
 from .templates import Question
 
 ADVICE_PREFIX = "No investment advice, buy/sell instruction or price forecast is given here; the following is historical evidence only.\n"
+CLAIM_NOTE = "A certain price increase is not supported by the tool evidence; only the historical relationship is shown.\n"
 CATCHUP_SPLIT = ("rank_sector_relative_strength", "test_catch_up_history")
 
 
@@ -107,7 +108,7 @@ def _select_args(q: Question) -> dict:
 def _with_prefix(q: Question, h: Harness, out: dict) -> dict:
     if q.negative != "advice":
         return out
-    text = ADVICE_PREFIX + out["explanation"]
+    text = ADVICE_PREFIX + (CLAIM_NOTE if getattr(q, "claim", False) else "") + out["explanation"]
     ok = policy.validate_output(out["action"], text, h.decision["permitted"], h.evidence, q.text, extra=[h.as_of, str(h.gate["reasons"])])["ok"]
     return {**out, "explanation": text} if ok else out
 

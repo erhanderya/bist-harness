@@ -113,3 +113,9 @@ def test_replay_ok_after_reorder_in_sector_mode(db):
     env = h.call("rank_sector_relative_strength", sector="MGROS", horizon_days=20)
     assert env["status"] == "OK"
     assert replay_analysis(h.id, db)["mismatched_calls"] == []
+
+
+def test_s1_loads_fundamentals_of_the_main_ticker(db):
+    h = reference.run("Q1", "BIMAS", "sector_catchup", as_of=AS_OF, db=db, peers=["MGROS", "MAVI"], horizon_days=20, **WIN)
+    fm = [c["envelope"]["data"]["ticker"] for c in h.calls if c["tool"] in ("get_fundamental_metrics", "calculate_fundamental_change") and c["envelope"]["data"]]
+    assert fm and set(fm) == {h.tickers[0]}

@@ -94,3 +94,24 @@ def test_plan_kw_valid_for_reference_plan():
     for q in QS[:60]:
         reference.plan(q.tickers[0], q.focus, start=q.start, end=q.end,
                        **{k: v for k, v in q.plan_kw.items()})   # raises on unknown kwargs
+
+
+def test_exam_frame_is_common():
+    frame = [q for q in QS if q.start == "2024-01-01" and q.as_of == "2026-09-10"]
+    assert len(frame) / len(QS) >= 0.25
+
+
+def test_two_period_weekday_questions():
+    tp = [q for q in QS if q.template_id.startswith("S2P-")]
+    assert len(tp) >= 15
+    for q in tp:
+        oos = q.plan_kw["pattern_kw"]["oos_start"]
+        assert oos.endswith("-01-01") and q.start < oos < q.as_of
+        prev_end = f"{int(oos[:4]) - 1}"
+        assert prev_end in q.text and oos[:4] in q.text
+
+
+def test_claim_advice_questions():
+    cl = [q for q in QS if q.claim]
+    assert len(cl) >= 10
+    assert all(q.negative == "advice" and q.scenario == "S5" and q.plan_kw.get("macro_factor") for q in cl)
