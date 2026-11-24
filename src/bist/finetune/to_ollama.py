@@ -1,24 +1,28 @@
-"""Faz 6 export: merge the LoRA adapter into the bf16 base model and register it in Ollama as a 4-bit (int4) model.
+"""Faz 6 export: merge the LoRA adapter into the bf16 base model, convert it to GGUF and register it in Ollama (Q4_K_M).
 
     python -m bist.finetune.to_ollama --run qlora_r16 --name bist-analyst
 
-The Modelfile reuses the chat template and stop tokens of the base Ollama model (`qwen3:4b-instruct-2507-q4_K_M`), so prompts and
-tool calls are rendered the same way as for the base model in Faz 7. Everything stays local (Ollama on 127.0.0.1).
+Ollama on Windows cannot import safetensors (its safetensors importer needs the MLX runtime), so the merged model goes through
+llama.cpp's `convert_hf_to_gguf.py` (build tool, cloned once to `.cache/llama.cpp`) to an F16 GGUF; llama.cpp's prebuilt `llama-quantize`
+(`.cache/llama-bin`) turns it into Q4_K_M, the same quantization type as the base model `qwen3:4b-instruct-2507-q4_K_M`
+(Ollama only quantizes safetensors imports), and `ollama create` imports that file. The Modelfile reuses
+the base model's chat template and parameters, so prompts and tool calls are rendered the same way in Faz 7. Everything runs
+locally (Ollama on 127.0.0.1).
 """
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
-import urllib.request
+import sys
 from pathlib import Path
 
 from .export import MODEL_ID
 
 RUNS = Path("finetune/runs")
 BASE_OLLAMA = "qwen3:4b-instruct-2507-q4_K_M"
-OLLAMA = "http://127.0.0.1:11434"
+CONVERT = Path(".cache/llama.cpp/convert_hf_to_gguf.py")
+QUANTIZE = Path(".cache/llama-bin/llama-quantize.exe")   # llama.cpp release b12671, win-cpu-x64
 
 
 def merge(adapter: Path, out: Path) -> Path:
@@ -34,29 +38,50 @@ def merge(adapter: Path, out: Path) -> Path:
     return out
 
 
-def base_modelfile_parts(model: str = BASE_OLLAMA) -> tuple[str, list[str]]:
-    req = urllib.request.Request(f"{OLLAMA}/api/show", data=json.dumps({"model": model}).encode(), headers={"Content-Type": "application/json"})
-    d = json.load(urllib.request.urlopen(req, timeout=60))
-    params = [l.strip() for l in (d.get("parameters") or "").splitlines() if l.strip()]
-    return d["template"], params
+def to_gguf(merged: Path, out: Path) -> Path:
+    if not CONVERT.exists():
+        raise SystemExit(f"{CONVERT} missing: git clone --depth 1 https://github.com/ggml-org/llama.cpp .cache/llama.cpp "
+                         "&& pip install ./.cache/llama.cpp/gguf-py")
+    env = {**os.environ, "HF_HUB_OFFLINE": "1"}
+    subprocess.run([sys.executable, str(CONVERT), str(merged), "--outfile", str(out), "--outtype", "f16"], check=True, env=env)
+    return out
 
 
-def modelfile(src: Path, template: str, params: list[str]) -> str:
-    lines = [f"FROM {src.resolve()}", f'TEMPLATE """{template}"""']
-    lines += [f"PARAMETER {p}" for p in params]
+def quantize(src: Path, out: Path, quant: str) -> Path:
+    if not QUANTIZE.exists():
+        raise SystemExit(f"{QUANTIZE} missing: unzip llama.cpp's llama-<build>-bin-win-cpu-x64.zip release into .cache/llama-bin")
+    subprocess.run([str(QUANTIZE), str(src), str(out), quant.upper()], check=True)
+    return out
+
+
+def modelfile(src: Path, base: str = BASE_OLLAMA) -> str:
+    """The base model's own Modelfile (Go chat template, stop tokens, sampling parameters) with FROM pointing at `src`.
+    (`/api/show` returns the GGUF's Jinja template, which `ollama create` cannot parse, so it is not used.)"""
+    text = subprocess.run(["ollama", "show", "--modelfile", base], check=True, capture_output=True, text=True,
+                          encoding="utf-8").stdout
+    lines = [l for l in text.splitlines() if not l.startswith("#")]
+    i = next(k for k, l in enumerate(lines) if l.startswith("FROM "))
+    lines[i] = f"FROM {src.resolve()}"
     return "\n".join(lines) + "\n"
 
 
-def main(run: str, name: str, quant: str = "int4") -> None:
+def main(run: str, name: str, quant: str = "q4_K_M") -> None:
     rd = RUNS / run
     merged = rd / "merged"
     if not (merged / "config.json").exists():
         print(f"merging {rd / 'final_adapter'} -> {merged}", flush=True)
         merge(rd / "final_adapter", merged)
-    template, params = base_modelfile_parts()
+    gguf = rd / "model-f16.gguf"
+    if not gguf.exists():
+        print(f"converting {merged} -> {gguf}", flush=True)
+        to_gguf(merged, gguf)
+    qgguf = rd / f"model-{quant.lower()}.gguf"
+    if not qgguf.exists():
+        print(f"quantizing {gguf} -> {qgguf}", flush=True)
+        quantize(gguf, qgguf, quant)
     mf = rd / "Modelfile"
-    mf.write_text(modelfile(merged, template, params), encoding="utf-8")
-    subprocess.run(["ollama", "create", name, "--quantize", quant, "-f", str(mf)], check=True)
+    mf.write_text(modelfile(qgguf), encoding="utf-8")
+    subprocess.run(["ollama", "create", name, "-f", str(mf)], check=True)
     print(f"created ollama model {name}", flush=True)
 
 
@@ -64,7 +89,7 @@ def _cli() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--run", default="qlora_r16")
     ap.add_argument("--name", default="bist-analyst")
-    ap.add_argument("--quant", default="int4")   # Ollama >= 0.40 quantize types: int4, int8, nvfp4, mxfp4, mxfp8
+    ap.add_argument("--quant", default="q4_K_M")
     a = ap.parse_args()
     main(a.run, a.name, a.quant)
 
