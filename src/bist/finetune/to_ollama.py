@@ -5,8 +5,9 @@
 Ollama on Windows cannot import safetensors (its safetensors importer needs the MLX runtime), so the merged model goes through
 llama.cpp's `convert_hf_to_gguf.py` (build tool, cloned once to `.cache/llama.cpp`) to an F16 GGUF; llama.cpp's prebuilt `llama-quantize`
 (`.cache/llama-bin`) turns it into Q4_K_M, the same quantization type as the base model `qwen3:4b-instruct-2507-q4_K_M`
-(Ollama only quantizes safetensors imports), and `ollama create` imports that file. The Modelfile reuses
-the base model's chat template and parameters, so prompts and tool calls are rendered the same way in Faz 7. Everything runs
+(Ollama only quantizes safetensors imports), and `ollama create` imports that file. The Modelfile takes
+the base model's parameters but no TEMPLATE, so Ollama uses the chat template embedded in the GGUF, exactly like the base model:
+prompts and tool calls are rendered as in training and as for the base model in Faz 7. Everything runs
 locally (Ollama on 127.0.0.1).
 """
 from __future__ import annotations
@@ -54,15 +55,17 @@ def quantize(src: Path, out: Path, quant: str) -> Path:
     return out
 
 
-def modelfile(src: Path, base: str = BASE_OLLAMA) -> str:
-    """The base model's own Modelfile (Go chat template, stop tokens, sampling parameters) with FROM pointing at `src`.
-    (`/api/show` returns the GGUF's Jinja template, which `ollama create` cannot parse, so it is not used.)"""
-    text = subprocess.run(["ollama", "show", "--modelfile", base], check=True, capture_output=True, text=True,
-                          encoding="utf-8").stdout
-    lines = [l for l in text.splitlines() if not l.startswith("#")]
-    i = next(k for k, l in enumerate(lines) if l.startswith("FROM "))
-    lines[i] = f"FROM {src.resolve()}"
-    return "\n".join(lines) + "\n"
+def base_modelfile(base: str = BASE_OLLAMA) -> str:
+    return subprocess.run(["ollama", "show", "--modelfile", base], check=True, capture_output=True, text=True, encoding="utf-8").stdout
+
+
+def modelfile(src: Path, base_text: str) -> str:
+    """FROM `src` + the base model's PARAMETER lines (stop tokens, sampling), and NO TEMPLATE: the base Ollama model runs on the
+    Jinja chat template embedded in its GGUF (`template_source: gguf_chat_template`), and so does ours (convert_hf_to_gguf embeds
+    the HF template = the training format). A TEMPLATE line would switch Ollama to its Go template, which renders tool calls and
+    tool results differently from training; with it the fine-tuned model stopped emitting `next_state` and skipped states."""
+    params = [l for l in base_text.splitlines() if l.startswith("PARAMETER ")]
+    return "\n".join([f"FROM {src.resolve()}", *params]) + "\n"
 
 
 def main(run: str, name: str, quant: str = "q4_K_M") -> None:
@@ -80,7 +83,7 @@ def main(run: str, name: str, quant: str = "q4_K_M") -> None:
         print(f"quantizing {gguf} -> {qgguf}", flush=True)
         quantize(gguf, qgguf, quant)
     mf = rd / "Modelfile"
-    mf.write_text(modelfile(qgguf), encoding="utf-8")
+    mf.write_text(modelfile(qgguf, base_modelfile()), encoding="utf-8")
     subprocess.run(["ollama", "create", name, "-f", str(mf)], check=True)
     print(f"created ollama model {name}", flush=True)
 

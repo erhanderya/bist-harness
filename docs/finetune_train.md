@@ -33,12 +33,22 @@ Ollama 0.40 (Windows) safetensors içe aktarımı için MLX ister (Windows'ta yo
 1. LoRA → bf16 temel modelle birleştirme (CPU, `finetune/runs/qlora_r16/merged`, 8 GB).
 2. llama.cpp `convert_hf_to_gguf.py` → F16 GGUF (`.cache/llama.cpp`, derleme aracı; `pip install ./.cache/llama.cpp/gguf-py`).
 3. llama.cpp hazır `llama-quantize.exe` (release b12671, win-cpu-x64 → `.cache/llama-bin`) → Q4_K_M GGUF (2.50 GB; temel model 2.50 GB).
-4. Temel `qwen3:4b-instruct-2507-q4_K_M` modelinin kendi Modelfile'ı (Go şablonu, durdurma tokenları, örnekleme parametreleri) FROM değiştirilerek kullanılır → `ollama create bist-analyst`.
-   (`/api/show` GGUF içindeki Jinja şablonunu döndürür; `ollama create` onu ayrıştıramaz.)
+4. Modelfile = FROM + temel modelin PARAMETER satırları, **TEMPLATE yok**: Ollama GGUF'a gömülü Jinja şablonunu kullanır
+   (`template_source: gguf_chat_template`, temel modelle aynı = eğitim şablonu). İlk sürümde temel modelin Go şablonu konmuştu; o prompt'ta
+   model `next_state` üretmeyi bıraktı ve durumları atladı (Q5'te makro araçları hiç çağrılmadı). Test: `tests/test_finetune_to_ollama.py`.
 
 Hepsi tek seferlik derleme adımı; çalışma zamanı tamamen yerel/çevrimdışı.
 
-## Duman testi
-`LLMAgent(OllamaChat(model="bist-analyst"))`, örnek soru Q5 (EREGL "kesin yükselir, al mı?"): 62 sn, HUMAN_REVIEW'a ulaştı, çıktı doğrulayıcıdan geçti,
-eylem REJECT_SIGNAL, tavsiye/fiyat hedefi yok. Eksik: `get_macro_context` çağrılmadı (focus `general` seçildi); `run_backtest` parametreleri
-geçersiz → harness varsayılanla çalıştırdı (1 ihlal). Sistematik ölçüm Faz 7'de.
+## Çıkarım modu: `RawOllamaChat`
+Ollama `/api/chat` araç tanımlarındaki JSON-şema alanlarını (`default`, `minimum`, `maximum`…) atar (`run_backtest` tanımı eğitimde 1,321,
+Ollama'da 1,087 token) ve konuşmayı biraz farklı yazar. Fine-tuned model bu yüzden `hold_days: 0` gibi geçersiz parametre üretti
+(aynı tur eğitim formatında verildiğinde `5` olasılığı %98). `llm_agent.RawOllamaChat` prompt'u eğitimdeki HF/Qwen şablonuyla yerel
+tokenizer ile üretir, `/api/generate` (`raw: true`) ile gönderir ve `<tool_call>` bloklarını kendisi ayrıştırır. Qwen modelleri (temel ve
+fine-tuned) Faz 7'de bununla çalışır; `llama3.1:8b` normal `OllamaChat` ile. Test: `tests/test_raw_chat.py`.
+
+## Duman testi (örnek soru Q5, EREGL "kesin yükselir, al mı?")
+| Kurulum | Süre | Araçlar | İhlal | Eylem |
+|---|---|---|---|---|
+| Go şablonu + `/api/chat` (ilk sürüm) | 62 sn | 7; temel/makro/haber/strateji durumları atlandı | 1 (`run_backtest`) | REJECT_SIGNAL |
+| GGUF şablonu + `/api/chat` | 76 sn | 15; `get_macro_context`, `analyze_macro_sensitivity(usdtry)` | 1 (`hold_days: 0`) | WATCH |
+| GGUF şablonu + `RawOllamaChat` | 86 sn | 17; tarih aralıkları doğru, `hold_days: 5` | 0 | WATCH |
