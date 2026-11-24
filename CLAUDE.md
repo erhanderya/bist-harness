@@ -8,7 +8,7 @@
 - Veri (`data/` gitignore'da, repoda yok): yeniden kurulum sırası `fetch_prices` → `clean_prices` (data/corrections.csv: CCOLA.IS 2024-08-01 katsayı 11) → `fetch_macro` → `fetch_evds` (TCMB; `.env` EVDS_API_KEY) → `fetch_disclosure_times` → `fetch_fundamentals` → `fundamental_metrics` → `fundamental_calendar`. DİKKAT: `fetch_disclosure_times` başarısız pencereyi yamarken `--merge` verilmezse parquet'in üzerine yazar. `kap_harvest_official`/`validate_fundamentals` MKK anahtarı ister, araçlar kullanmaz.
 - Kural: araç şemaları (mcp/tool_schemas.json) Faz 2'de dondurulmadan eğitim verisi üretme.
 - Windows/Git Bash: dosya yolları /c/... ; Python'u `-I` ile değil venv ile çalıştır.
-- Çalıştırma: `cd /c/Projects/econ/bist-harness && PYTHONPATH=src PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -m <modül>`; test: `... -m pytest tests -q` (217 test; örnek soru kabulü: tests/test_sample_questions.py). Uzun Python dosyalarını bash heredoc yerine Write ile yaz.
+- Çalıştırma: `cd /c/Projects/econ/bist-harness && PYTHONPATH=src PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -m <modül>`; test: `... -m pytest tests -q` (218 test; örnek soru kabulü: tests/test_sample_questions.py). Uzun Python dosyalarını bash heredoc yerine Write ile yaz.
 - Araçlar: src/bist/tools/ (envelope.py sözleşme; her araç as_of alır, sonrasını görmez; hatalar status=ERROR zarfı). Şema: mcp/tool_schemas.json DONDURULDU (v1.1, 19 araç; ROADMAP Faz 2b). Ortak tarih aralığı/ileri pencere kuralları: tools/common.py. Hocanın 5 örnek sorusu: docs/sample_test_questions.txt.
 
 ## Harness (Faz 4)

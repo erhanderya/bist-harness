@@ -89,7 +89,7 @@ class RawOllamaChat:
     was trained on. Use it for Qwen models (base and fine-tuned) so both get the identical, official template."""
 
     def __init__(self, model: str = "qwen3:4b-instruct-2507-q4_K_M", host: str = "http://localhost:11434", temperature: float = 0.0,
-                 num_ctx: int = 16384, timeout: int = 300, num_predict: int = 2048, post: Callable | None = None):
+                 num_ctx: int = 16384, timeout: int = 300, num_predict: int = -1, post: Callable | None = None):
         self.model, self.host, self.temperature, self.num_ctx, self.timeout, self.num_predict = model, host, temperature, num_ctx, timeout, num_predict
         self._post = post or self._http
 

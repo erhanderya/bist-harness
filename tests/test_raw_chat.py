@@ -58,3 +58,10 @@ def test_json_format_passed_through():
     post = FakePost('{"action": "WATCH", "explanation": "x"}')
     out = RawOllamaChat(model="m", post=post)(MSGS, json_format=True)
     assert post.bodies[0][1]["format"] == "json" and json.loads(out["content"])["action"] == "WATCH" and "tool_calls" not in out
+
+
+def test_no_output_token_cap_by_default():
+    """A long explanation (Q4: 9 quarters of evidence, >2k tokens) must not be cut mid-JSON; /api/chat has no cap either."""
+    post = FakePost("{}")
+    RawOllamaChat(model="m", post=post)(MSGS, json_format=True)
+    assert post.bodies[0][1]["options"].get("num_predict", -1) == -1
