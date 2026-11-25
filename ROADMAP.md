@@ -101,10 +101,10 @@ Komut: `python -m bist.finetune.generate --n 300 --seed 0` (deterministik, ~12 d
 - Reddedilen: **Qwen3.5-4B** (daha yeni, ama Unsloth 4-bit QLoRA önermiyor → bf16 LoRA ≈10 GB VRAM > 8 GB; Qwen3.5 GGUF'ları Ollama'da çalışmıyor;
   multimodal + hibrit DeltaNet, transformers v5 gerekir). Yedek: Llama-3.2-3B-Instruct (Türkçe daha zayıf)
 - Karşılaştırma (Faz 7): base Qwen3-4B-2507 vs fine-tuned + `llama3.1:8b` hazır büyük referans
-- [ ] QLoRA (4-bit NF4, r=16, alpha=32, lr≈2e-4, grad checkpointing, batch 1 + grad accum), loss yalnız asistan tokenlarında
-- [ ] 2–3 hiperparametre denemesi, en iyi val/test seçimi
-- [ ] LoRA merge → GGUF (Q4_K_M) → `ollama create` ile yerel model
-- **Çıktı:** `bist-analyst` Ollama modeli, eğitim logları
+- [x] QLoRA (4-bit NF4, r=16, alpha=32, lr≈2e-4, grad checkpointing, batch 1 + grad accum), loss yalnız asistan tokenlarında — `bist.finetune.train`, checkpoint+resume; 372 adım, 6 sa, eval_loss 0.0198→0.0026 (docs/finetune_train.md)
+- [-] 2–3 hiperparametre denemesi — ATLANDI (koşu başına ≈6 sa, teslim tarihi); tek koşu, val kaybı monoton düştü
+- [x] LoRA merge → GGUF (Q4_K_M) → `ollama create` ile yerel model — `bist.finetune.to_ollama` (llama.cpp convert + llama-quantize; Ollama/Windows safetensors alamıyor)
+- **Çıktı:** `bist-analyst` Ollama modeli, eğitim logları ✅ 2026-11-24
 
 ## Faz 7 — Değerlendirme ve deneyler (≈ 2–3 gün)
 - [ ] Otomatik değerlendirici: sayısal halüsinasyon, hatalı araç çağrısı, kanıtsız sonuç, izinli eylem uyumu,

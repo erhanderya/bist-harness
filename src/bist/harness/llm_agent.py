@@ -13,6 +13,7 @@ the focus, the analysis date and the question's data period; caller-supplied `as
 from __future__ import annotations
 
 import json
+import re
 import urllib.request
 from typing import Callable
 
@@ -61,6 +62,57 @@ class OllamaChat:
         req = urllib.request.Request(f"{self.host}/api/chat", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=self.timeout) as r:
             return json.loads(r.read())["message"]
+
+
+_TOOL_CALL = re.compile(r"<tool_call>\s*(.*?)\s*(?:</tool_call>|$)", re.S)
+
+
+def parse_tool_calls(text: str) -> tuple[str, list[dict]]:
+    """Qwen output -> (content, tool_calls). A block whose JSON does not parse keeps its raw arguments string, so LLMAgent reports
+    MALFORMED_ARGUMENTS instead of silently dropping the call."""
+    calls = []
+    for body in _TOOL_CALL.findall(text):
+        try:
+            d = json.loads(body)
+            calls.append({"function": {"name": d.get("name", ""), "arguments": d.get("arguments") or {}}})
+        except ValueError:
+            name = re.search(r'"name"\s*:\s*"([^"]*)"', body)
+            calls.append({"function": {"name": name.group(1) if name else "unknown", "arguments": body}})
+    content = _TOOL_CALL.sub("", text).strip() if calls else text.strip()
+    return content, calls
+
+
+class RawOllamaChat:
+    """Same interface as OllamaChat, but the prompt is rendered with the HF/Qwen chat template used for training (local tokenizer)
+    and sent to /api/generate with raw=true. Ollama's /api/chat drops JSON-schema fields (default/minimum/maximum...) from tool
+    definitions and renders the conversation slightly differently, so the fine-tuned model would see another format than it
+    was trained on. Use it for Qwen models (base and fine-tuned) so both get the identical, official template."""
+
+    def __init__(self, model: str = "qwen3:4b-instruct-2507-q4_K_M", host: str = "http://localhost:11434", temperature: float = 0.0,
+                 num_ctx: int = 16384, timeout: int = 300, num_predict: int = -1, post: Callable | None = None):
+        self.model, self.host, self.temperature, self.num_ctx, self.timeout, self.num_predict = model, host, temperature, num_ctx, timeout, num_predict
+        self._post = post or self._http
+
+    def _http(self, path: str, body: dict) -> dict:
+        req = urllib.request.Request(f"{self.host}{path}", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=self.timeout) as r:
+            return json.loads(r.read())
+
+    def prompt(self, messages: list[dict], tools: list[dict] | None = None) -> str:
+        from ..finetune.export import to_hf_messages, tokenizer
+        return tokenizer().apply_chat_template(to_hf_messages(messages), tools=tools or None, tokenize=False, add_generation_prompt=True)
+
+    def __call__(self, messages: list[dict], tools: list[dict] | None = None, json_format: bool = False) -> dict:
+        body = {"model": self.model, "prompt": self.prompt(messages, tools), "raw": True, "stream": False,
+                "options": {"temperature": self.temperature, "num_ctx": self.num_ctx, "num_predict": self.num_predict,
+                            "stop": ["<|im_end|>", "<|im_start|>"]}}
+        if json_format:
+            body["format"] = "json"
+        content, calls = parse_tool_calls(self._post("/api/generate", body)["response"])
+        msg = {"role": "assistant", "content": content}
+        if calls:
+            msg["tool_calls"] = calls
+        return msg
 
 
 def tool_defs(names: list[str]) -> list[dict]:
